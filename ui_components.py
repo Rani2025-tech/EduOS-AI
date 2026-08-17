@@ -360,26 +360,49 @@ div[data-testid="stMetricDelta"] {{
     background: {C['blue_light']} !important;
 }}
 
-/* ── 8. Inputs, textareas, select boxes ──────────────────────────────────── */
-.stTextInput > div > div > input,
-.stTextArea > div > div > textarea {{
-    border: 1px solid {C['border_dark']} !important;
-    border-radius: 6px !important;
+/* ── 8. Forms & Inputs ───────────────────────────────────────────────────── */
+div[data-testid="stForm"] {{
     background: {C['surface']} !important;
+    border: 1px solid {C['border']} !important;
+    border-radius: 12px !important;
+    padding: 24px 28px !important;
+    box-shadow: 0 4px 20px -2px rgba(23, 54, 93, 0.06), 0 2px 6px -1px rgba(23, 54, 93, 0.03) !important;
+}}
+
+div[data-baseweb="input"] {{
+    border: 1px solid {C['border_dark']} !important;
+    border-radius: 8px !important;
+    background: {C['surface']} !important;
+    transition: border-color 0.15s, box-shadow 0.15s;
+}}
+div[data-baseweb="input"]:focus-within {{
+    border-color: {C['blue']} !important;
+    box-shadow: 0 0 0 3px rgba(37,99,235,0.12) !important;
+}}
+div[data-baseweb="input"] > input {{
     color: {C['text']} !important;
     font-size: 0.875rem !important;
     padding: 8px 12px !important;
-    box-shadow: none !important;
-    transition: border-color 0.15s;
 }}
-.stTextInput > div > div > input:focus,
+.stTextInput > div > div > input,
+.stTextArea > div > div > textarea {{
+    color: {C['text']} !important;
+    font-size: 0.875rem !important;
+}}
+.stTextArea > div > div > textarea {{
+    border: 1px solid {C['border_dark']} !important;
+    border-radius: 8px !important;
+    background: {C['surface']} !important;
+    padding: 10px 12px !important;
+    transition: border-color 0.15s, box-shadow 0.15s;
+}}
 .stTextArea > div > div > textarea:focus {{
     border-color: {C['blue']} !important;
-    box-shadow: 0 0 0 3px rgba(37,99,235,0.1) !important;
+    box-shadow: 0 0 0 3px rgba(37,99,235,0.12) !important;
 }}
 .stSelectbox [data-baseweb="select"] > div {{
     border: 1px solid {C['border_dark']} !important;
-    border-radius: 6px !important;
+    border-radius: 8px !important;
     background: {C['surface']} !important;
     font-size: 0.875rem !important;
 }}
@@ -387,7 +410,7 @@ div[data-testid="stMetricDelta"] {{
 .stTextInput label,
 .stTextArea label,
 .stFileUploader label {{
-    font-size: 0.8rem !important;
+    font-size: 0.78rem !important;
     font-weight: 600 !important;
     color: {C['text_muted']} !important;
     text-transform: uppercase !important;
@@ -397,7 +420,7 @@ div[data-testid="stMetricDelta"] {{
 
 /* ── 9. Streamlit native alerts ──────────────────────────────────────────── */
 .stAlert {{
-    border-radius: 6px !important;
+    border-radius: 8px !important;
     font-size: 0.875rem !important;
     border-left-width: 4px !important;
 }}

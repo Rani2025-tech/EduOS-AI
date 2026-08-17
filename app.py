@@ -59,37 +59,79 @@ inject_global_styles()
 
 # ── 3. Login gate ────────────────────────────────────────────────────────────
 if not is_authenticated():
-    st.markdown("""
-        <div style="max-width:420px;margin:80px auto 0;">
-            <div style="text-align:center;margin-bottom:32px;">
-                <div style="font-size:2rem;font-weight:800;color:#17365D;">
-                    EduOS <span style="color:#2563EB;">AI</span>
+    col_l, col_center, col_r = st.columns([1, 1.15, 1])
+
+    with col_center:
+        st.markdown(
+            """
+            <div style="text-align: center; margin-top: 36px; margin-bottom: 24px;">
+                <div style="display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 10px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(37,99,235,0.08);">
+                    <span style="font-size: 1.35rem; line-height: 1;">⚡</span>
                 </div>
-                <div style="font-size:0.85rem;color:#5B6B7F;margin-top:4px;">
+                <div style="font-size: 1.75rem; font-weight: 800; color: #17365D; letter-spacing: -0.03em; line-height: 1.2;">
+                    EduOS <span style="color: #2563EB;">AI</span>
+                </div>
+                <div style="font-size: 0.82rem; font-weight: 500; color: #5B6B7F; margin-top: 4px;">
                     School Operations Platform
                 </div>
             </div>
-        </div>
-    """, unsafe_allow_html=True)
-
-    with st.form("login_form", clear_on_submit=False):
-        st.markdown("#### Sign in to your account")
-        username_input = st.text_input("Username", placeholder="Enter your username")
-        password_input = st.text_input("Password", type="password", placeholder="Enter your password")
-        submitted = st.form_submit_button("Sign In", type="primary", use_container_width=True)
-
-        if submitted:
-            if login_user(username_input, password_input):
-                init_session_state()
-                st.rerun()
-            else:
-                st.error(st.session_state.get("auth_error", "Login failed."))
-
-    if not db_instance.is_supabase_active:
-        st.warning(
-            "Supabase is not connected. Fix your `.env` configuration before logging in.",
-            icon="⚠️",
+            """,
+            unsafe_allow_html=True,
         )
+
+        with st.form("login_form", clear_on_submit=False):
+            st.markdown(
+                """
+                <div style="margin-bottom: 18px;">
+                    <div style="font-size: 1.1rem; font-weight: 700; color: #17365D; letter-spacing: -0.01em;">
+                        Welcome back
+                    </div>
+                    <div style="font-size: 0.82rem; color: #5B6B7F; margin-top: 2px;">
+                        Sign in to your account to continue
+                    </div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+            username_input = st.text_input(
+                "Username",
+                placeholder="Enter your username",
+                key="login_username",
+            )
+            password_input = st.text_input(
+                "Password",
+                type="password",
+                placeholder="Enter your password",
+                key="login_password",
+            )
+
+            st.markdown("<div style='margin-top: 6px;'></div>", unsafe_allow_html=True)
+            submitted = st.form_submit_button("Sign In", type="primary", use_container_width=True)
+
+            if submitted:
+                if login_user(username_input, password_input):
+                    init_session_state()
+                    st.rerun()
+                else:
+                    st.error(st.session_state.get("auth_error", "Login failed."))
+
+        if not db_instance.is_supabase_active:
+            st.markdown("<div style='margin-top: 12px;'></div>", unsafe_allow_html=True)
+            st.warning(
+                "Supabase is not connected. Fix your `.env` configuration before logging in.",
+                icon="⚠️",
+            )
+
+        st.markdown(
+            """
+            <div style="text-align: center; margin-top: 20px; font-size: 0.75rem; color: #7A8797;">
+                🔒 Role-based access control &nbsp;·&nbsp; Enterprise secure session
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
     st.stop()
 
 # ── Authenticated from here down ─────────────────────────────────────────────────

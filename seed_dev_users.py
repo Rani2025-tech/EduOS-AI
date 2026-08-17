@@ -167,8 +167,8 @@ def seed_users(password: str) -> None:
 
 def main() -> None:
     print("=" * 55)
-    print("  EduOS AI — Development User Seed")
-    print("  ⚠️  DEVELOPMENT ONLY")
+    print("  EduOS AI -- Development User Seed")
+    print("  [WARN] DEVELOPMENT ONLY")
     print("=" * 55)
 
     password = _check_prerequisites()
