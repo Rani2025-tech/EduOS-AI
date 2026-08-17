@@ -1,4 +1,6 @@
 -- EduOS AI — Supabase PostgreSQL Schema
+-- Apply this file in the Supabase SQL Editor.
+-- Run once per project. Safe to re-run (uses IF NOT EXISTS).
 
 -- 1. Students Table
 CREATE TABLE IF NOT EXISTS students (
@@ -31,7 +33,25 @@ CREATE TABLE IF NOT EXISTS teachers (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 3. Timetable Table
+-- 3. Teacher Availability Table
+-- Stores per-teacher availability constraints and absence records.
+-- Used by: db_client.py (get/upsert_teacher_availability),
+--          timetable_solver.py (unavailable_matrix),
+--          teacher_parser.py (TeacherAvailabilitySchema),
+--          data_store.py (toggle_teacher absence record).
+CREATE TABLE IF NOT EXISTS teacher_availability (
+    id TEXT PRIMARY KEY,
+    teacher_id TEXT REFERENCES teachers(id) ON DELETE CASCADE,
+    teacher_name TEXT NOT NULL,
+    day_of_week TEXT,                        -- e.g. 'Monday'
+    specific_date DATE,                      -- optional specific date (YYYY-MM-DD)
+    period INTEGER,                          -- period number 1-6; NULL means all periods
+    status TEXT NOT NULL DEFAULT 'available',-- 'available' | 'unavailable' | 'preferred'
+    notes TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 4. Timetable Table
 CREATE TABLE IF NOT EXISTS timetable (
     id TEXT PRIMARY KEY,
     period INTEGER NOT NULL,
@@ -49,20 +69,22 @@ CREATE TABLE IF NOT EXISTS timetable (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 4. Documents Table
+-- 5. Documents Table
 CREATE TABLE IF NOT EXISTS documents (
     id TEXT PRIMARY KEY,
     filename TEXT NOT NULL,
     doc_type TEXT NOT NULL,
+    source_type TEXT DEFAULT 'file',         -- 'image' | 'file' | 'text_paste'
     uploaded_at TIMESTAMPTZ DEFAULT NOW(),
-    status TEXT DEFAULT 'review_required',
+    status TEXT DEFAULT 'review_required',   -- 'review_required' | 'committed' | 'rejected'
     ocr_raw_text TEXT,
     fields JSONB DEFAULT '{}'::jsonb,
     confidence NUMERIC(5,2) DEFAULT 90.0,
+    validation_errors TEXT,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 5. Alerts Table
+-- 6. Alerts Table
 CREATE TABLE IF NOT EXISTS alerts (
     id TEXT PRIMARY KEY,
     type TEXT NOT NULL,
@@ -76,7 +98,7 @@ CREATE TABLE IF NOT EXISTS alerts (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 6. Insights Table
+-- 7. Insights Table
 CREATE TABLE IF NOT EXISTS insights (
     id TEXT PRIMARY KEY,
     category TEXT NOT NULL,
@@ -89,7 +111,7 @@ CREATE TABLE IF NOT EXISTS insights (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 7. Copilot Messages Table
+-- 8. Copilot Messages Table
 CREATE TABLE IF NOT EXISTS copilot_messages (
     id TEXT PRIMARY KEY,
     sender TEXT NOT NULL,
@@ -102,6 +124,7 @@ CREATE TABLE IF NOT EXISTS copilot_messages (
 -- Enable Row Level Security
 ALTER TABLE students ENABLE ROW LEVEL SECURITY;
 ALTER TABLE teachers ENABLE ROW LEVEL SECURITY;
+ALTER TABLE teacher_availability ENABLE ROW LEVEL SECURITY;
 ALTER TABLE timetable ENABLE ROW LEVEL SECURITY;
 ALTER TABLE documents ENABLE ROW LEVEL SECURITY;
 ALTER TABLE alerts ENABLE ROW LEVEL SECURITY;
@@ -111,6 +134,8 @@ ALTER TABLE copilot_messages ENABLE ROW LEVEL SECURITY;
 -- Indexes
 CREATE INDEX IF NOT EXISTS idx_students_class ON students(class);
 CREATE INDEX IF NOT EXISTS idx_students_attendance ON students(attendance_pct);
+CREATE INDEX IF NOT EXISTS idx_teacher_availability_teacher ON teacher_availability(teacher_id);
+CREATE INDEX IF NOT EXISTS idx_teacher_availability_status ON teacher_availability(status);
 CREATE INDEX IF NOT EXISTS idx_timetable_class_period ON timetable(class_name, period);
 CREATE INDEX IF NOT EXISTS idx_timetable_teacher ON timetable(teacher_id);
 CREATE INDEX IF NOT EXISTS idx_alerts_resolved ON alerts(resolved);

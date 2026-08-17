@@ -8,6 +8,8 @@ from db_client import db_instance
 from doc_parser import parse_document_input
 from teacher_parser import parse_teacher_input
 from timetable_parser import parse_and_solve_timetable
+from analytics_engine import generate_all_insights
+from staffing_engine import calculate_staffing_report
 
 logger = logging.getLogger("EduOS_DataStore")
 logger.setLevel(logging.INFO)
@@ -37,10 +39,28 @@ def init_session_state():
         st.session_state.alerts = db_instance.get_alerts()
 
     if "insights" not in st.session_state:
-        st.session_state.insights = db_instance.get_insights()
+        # Prefer live DB insights; fall back to calculated insights when DB is unavailable
+        db_insights = db_instance.get_insights()
+        if db_insights:
+            st.session_state.insights = db_insights
+        else:
+            st.session_state.insights = generate_all_insights(
+                students=st.session_state.get("students", []),
+                teachers=st.session_state.get("teachers", []),
+                teacher_availability=st.session_state.get("teacher_availability", []),
+                timetable=st.session_state.get("timetable", []),
+                documents=st.session_state.get("documents", []),
+            )
 
     if "copilot_messages" not in st.session_state:
         st.session_state.copilot_messages = db_instance.get_copilot_messages()
+
+    if "staffing_report" not in st.session_state:
+        st.session_state.staffing_report = calculate_staffing_report(
+            teachers=st.session_state.get("teachers", []),
+            teacher_availability=st.session_state.get("teacher_availability", []),
+            timetable=st.session_state.get("timetable", []),
+        )
 
 def refresh_from_db():
     """Refetches real live records from Supabase database."""
@@ -50,7 +70,19 @@ def refresh_from_db():
     st.session_state.timetable = db_instance.get_timetable()
     st.session_state.documents = db_instance.get_documents()
     st.session_state.alerts = db_instance.get_alerts()
-    st.session_state.insights = db_instance.get_insights()
+    db_insights = db_instance.get_insights()
+    st.session_state.insights = db_insights if db_insights else generate_all_insights(
+        students=st.session_state.get("students", []),
+        teachers=st.session_state.get("teachers", []),
+        teacher_availability=st.session_state.get("teacher_availability", []),
+        timetable=st.session_state.get("timetable", []),
+        documents=st.session_state.get("documents", []),
+    )
+    st.session_state.staffing_report = calculate_staffing_report(
+        teachers=st.session_state.get("teachers", []),
+        teacher_availability=st.session_state.get("teacher_availability", []),
+        timetable=st.session_state.get("timetable", []),
+    )
     st.session_state.copilot_messages = db_instance.get_copilot_messages()
 
 def process_and_save_teacher_input(file_obj=None, raw_text_input: str = "") -> Tuple_Result:

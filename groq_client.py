@@ -17,11 +17,17 @@ except ImportError:
 
 class GroqAIClient:
     def __init__(self):
-        self.api_key = os.getenv("GROQ_API_KEY", "")
+        self.api_key = os.getenv("GROQ_API_KEY", "").strip()
         self.model = "llama-3.3-70b-versatile"
         self.client = None
 
-        if HAS_GROQ_LIB and self.api_key:
+        if not self.api_key:
+            logger.warning(
+                "GROQ_API_KEY is not set. "
+                "AI document extraction and timetable parsing will be unavailable. "
+                "Set GROQ_API_KEY in your .env file."
+            )
+        elif HAS_GROQ_LIB:
             try:
                 self.client = Groq(api_key=self.api_key)
                 logger.info("Groq API client initialized successfully.")

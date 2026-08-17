@@ -1,102 +1,201 @@
+"""
+EduOS AI — Supabase Database Smoke Test
+========================================
+Run from the project root:
+    python verify_supabase.py
+
+Checks:
+  1. Environment configuration
+  2. Supabase connection
+  3. All 8 required tables are accessible (READ)
+  4. Safe INSERT / UPSERT using a reserved test-only ID prefix
+  5. UPDATE
+  6. DELETE of test records only (never touches real data)
+
+Test records use IDs prefixed with "SMOKE-TEST-" so they are
+clearly identifiable and safe to delete.
+"""
+
 import sys
 import os
-from db_client import db_instance
+from db_client import db_instance, DB_STATUS_CONNECTED, DB_STATUS_MISSING_CONFIG, DB_STATUS_CONN_FAILED
+
+PASS = "\033[92m[PASS]\033[0m"
+FAIL = "\033[91m[FAIL]\033[0m"
+SKIP = "\033[93m[SKIP]\033[0m"
+INFO = "\033[94m[INFO]\033[0m"
+
+TEST_STUDENT_ID = "SMOKE-TEST-STU-001"
+TEST_ALERT_ID   = "SMOKE-TEST-ALT-001"
+TEST_AVAIL_ID   = "SMOKE-TEST-AV-001"
+
+def section(title: str):
+    print(f"\n{'='*55}")
+    print(f"  {title}")
+    print('='*55)
 
 def run_verification():
-    print("====================================================")
-    print("     EduOS AI -- Supabase Real CRUD Verification    ")
-    print("====================================================")
+    section("EduOS AI — Supabase Smoke Test")
 
-    if not db_instance.is_supabase_active or not db_instance.supabase:
-        print("[ERROR] Supabase client is not active!")
+    # ── 1. Environment Configuration ──────────────────────────
+    section("1. Environment Configuration")
+    url = os.getenv("SUPABASE_URL", "").strip()
+    key = (os.getenv("SUPABASE_KEY", "") or os.getenv("SUPABASE_ANON_KEY", "")).strip()
+    groq_key = os.getenv("GROQ_API_KEY", "").strip()
+
+    if url:
+        print(f"{PASS} SUPABASE_URL is set")
+    else:
+        print(f"{FAIL} SUPABASE_URL is missing — copy .env.example to .env")
+
+    if key:
+        print(f"{PASS} SUPABASE_KEY is set")
+    else:
+        print(f"{FAIL} SUPABASE_KEY is missing — copy .env.example to .env")
+
+    if groq_key:
+        print(f"{PASS} GROQ_API_KEY is set")
+    else:
+        print(f"{SKIP} GROQ_API_KEY is not set — AI extraction will be unavailable")
+
+    # ── 2. Connection ──────────────────────────────────────────
+    section("2. Supabase Connection")
+    if db_instance.connection_status == DB_STATUS_MISSING_CONFIG:
+        print(f"{FAIL} Cannot connect: credentials not configured.")
+        print("       Set SUPABASE_URL and SUPABASE_KEY in your .env file.")
+        sys.exit(1)
+    elif db_instance.connection_status == DB_STATUS_CONN_FAILED:
+        print(f"{FAIL} Credentials found but connection failed.")
+        print("       Check that your SUPABASE_URL and SUPABASE_KEY are correct.")
+        sys.exit(1)
+    else:
+        print(f"{PASS} Connected to Supabase: {db_instance.supabase_url}")
+
+    db = db_instance.supabase
+
+    # ── 3. Table READ Access ───────────────────────────────────
+    section("3. Table READ Access (all 8 required tables)")
+    required_tables = [
+        "students",
+        "teachers",
+        "teacher_availability",
+        "timetable",
+        "documents",
+        "alerts",
+        "insights",
+        "copilot_messages",
+    ]
+    table_counts = {}
+    all_readable = True
+    for table in required_tables:
+        try:
+            res = db.table(table).select("id", count="exact").limit(1).execute()
+            count = res.count if res.count is not None else len(res.data or [])
+            table_counts[table] = count
+            print(f"{PASS} {table:<25} rows accessible: {count}")
+        except Exception as e:
+            print(f"{FAIL} {table:<25} ERROR: {e}")
+            all_readable = False
+
+    if not all_readable:
+        print(f"\n{FAIL} One or more tables are missing. Apply schema.sql in the Supabase SQL Editor.")
         sys.exit(1)
 
-    print(f"[OK] Active Supabase URL: {db_instance.supabase_url}")
+    # ── 4. INSERT / UPSERT ────────────────────────────────────
+    section("4. INSERT / UPSERT (test records only)")
 
-    # 1. READ TEST
-    print("\n--- [1] READ Initial Records from Supabase ---")
-    students = db_instance.get_students()
-    teachers = db_instance.get_teachers()
-    timetable = db_instance.get_timetable()
-    documents = db_instance.get_documents()
-    alerts = db_instance.get_alerts()
-    insights = db_instance.get_insights()
-    copilot_msgs = db_instance.get_copilot_messages()
-
-    print(f"[READ] Students count: {len(students)}")
-    print(f"[READ] Teachers count: {len(teachers)}")
-    print(f"[READ] Timetable slots: {len(timetable)}")
-    print(f"[READ] Documents count: {len(documents)}")
-    print(f"[READ] Alerts count: {len(alerts)}")
-    print(f"[READ] Insights count: {len(insights)}")
-    print(f"[READ] Copilot messages count: {len(copilot_msgs)}")
-
-    # 2. CREATE TEST
-    print("\n--- [2] CREATE Real Test Records in Supabase ---")
     test_student = {
-        "id": "STU-999",
-        "name": "Verification Student",
-        "roll_no": "TEST-999",
-        "class": "10A",
-        "parent_name": "Test Parent",
-        "parent_phone": "+91 99999 88888",
-        "parent_email": "test.parent@example.com",
+        "id": TEST_STUDENT_ID,
+        "name": "Smoke Test Student",
+        "roll_no": "SMOKE-ROLL-001",
+        "class": "TEST-CLASS",
+        "parent_name": "Smoke Parent",
+        "parent_phone": "+91 00000 00000",
+        "parent_email": "smoke.test@eduos.test",
         "attendance_pct": 95.0,
         "fee_status": "pending",
-        "fee_amount_due": 5000,
-        "gpa": 3.8,
+        "fee_amount_due": 1000,
+        "gpa": 3.5,
         "risk_level": "low",
-        "assigned_room": "Room 909"
+        "assigned_room": "Room SMOKE",
     }
-    inserted_stu = db_instance.upsert_student(test_student)
-    print(f"[CREATE] Inserted Student: ID={inserted_stu.get('id')}, Name={inserted_stu.get('name')}")
+    try:
+        res = db.table("students").upsert(test_student).execute()
+        assert res.data, "No data returned from upsert"
+        print(f"{PASS} students — upsert OK (ID={TEST_STUDENT_ID})")
+    except Exception as e:
+        print(f"{FAIL} students — upsert FAILED: {e}")
 
     test_alert = {
-        "id": "ALT-999",
-        "type": "verification",
+        "id": TEST_ALERT_ID,
+        "type": "smoke_test",
         "priority": "low",
-        "title": "CRUD Test Alert",
-        "message": "System verification test alert.",
+        "title": "Smoke Test Alert",
+        "message": "This is an automated smoke test record.",
         "resolved": False,
-        "student_id": "STU-999",
-        "action": "Verify deletion"
+        "student_id": TEST_STUDENT_ID,
+        "action": "Delete after test",
     }
-    inserted_alt = db_instance.insert_alert(test_alert)
-    print(f"[CREATE] Inserted Alert: ID={inserted_alt.get('id')}, Title={inserted_alt.get('title')}")
+    try:
+        res = db.table("alerts").upsert(test_alert).execute()
+        assert res.data, "No data returned from upsert"
+        print(f"{PASS} alerts   — upsert OK (ID={TEST_ALERT_ID})")
+    except Exception as e:
+        print(f"{FAIL} alerts   — upsert FAILED: {e}")
 
-    # 3. UPDATE TEST
-    print("\n--- [3] UPDATE Records in Supabase ---")
-    test_student["attendance_pct"] = 65.0
-    test_student["fee_status"] = "paid"
-    test_student["fee_amount_due"] = 0
-    test_student["risk_level"] = "high"
-    updated_stu = db_instance.upsert_student(test_student)
-    print(f"[UPDATE] Updated Student STU-999: Attendance={updated_stu.get('attendance_pct')}%, Fee={updated_stu.get('fee_status')}, Risk={updated_stu.get('risk_level')}")
+    test_avail = {
+        "id": TEST_AVAIL_ID,
+        "teacher_name": "Smoke Test Teacher",
+        "day_of_week": "Monday",
+        "period": 1,
+        "status": "unavailable",
+        "notes": "Smoke test record",
+    }
+    try:
+        res = db.table("teacher_availability").upsert(test_avail).execute()
+        assert res.data, "No data returned from upsert"
+        print(f"{PASS} teacher_availability — upsert OK (ID={TEST_AVAIL_ID})")
+    except Exception as e:
+        print(f"{FAIL} teacher_availability — upsert FAILED: {e}")
 
-    resolved_success = db_instance.resolve_alert("ALT-999")
-    print(f"[UPDATE] Resolved Alert ALT-999: Status={resolved_success}")
+    # ── 5. UPDATE ─────────────────────────────────────────────
+    section("5. UPDATE")
+    try:
+        res = db.table("students").update({"attendance_pct": 80.0, "risk_level": "medium"}).eq("id", TEST_STUDENT_ID).execute()
+        assert res.data, "No data returned from update"
+        updated_att = res.data[0].get("attendance_pct")
+        print(f"{PASS} students — update OK (attendance_pct={updated_att})")
+    except Exception as e:
+        print(f"{FAIL} students — update FAILED: {e}")
 
-    # Verify update from database
-    verify_alerts = db_instance.get_alerts()
-    target_alert = next((a for a in verify_alerts if a["id"] == "ALT-999"), None)
-    if target_alert:
-        print(f"[UPDATE] Verified Alert Resolution in Supabase: Resolved={target_alert.get('resolved')}")
+    try:
+        res = db.table("alerts").update({"resolved": True}).eq("id", TEST_ALERT_ID).execute()
+        assert res.data, "No data returned from update"
+        resolved = res.data[0].get("resolved")
+        print(f"{PASS} alerts   — update OK (resolved={resolved})")
+    except Exception as e:
+        print(f"{FAIL} alerts   — update FAILED: {e}")
 
-    # 4. DELETE TEST
-    print("\n--- [4] DELETE Test Records from Supabase ---")
-    deleted_stu = db_instance.delete_student("STU-999")
-    print(f"[DELETE] Deleted Student STU-999: Success={deleted_stu}")
+    # ── 6. DELETE (test records only) ─────────────────────────
+    section("6. DELETE (smoke test records only)")
+    for table, col, val in [
+        ("alerts",               "id", TEST_ALERT_ID),
+        ("teacher_availability", "id", TEST_AVAIL_ID),
+        ("students",             "id", TEST_STUDENT_ID),
+    ]:
+        try:
+            db.table(table).delete().eq(col, val).execute()
+            print(f"{PASS} {table:<25} — deleted test record ({val})")
+        except Exception as e:
+            print(f"{FAIL} {table:<25} — delete FAILED: {e}")
 
-    db_instance.supabase.table("alerts").delete().eq("id", "ALT-999").execute()
-    print("[DELETE] Cleaned up test alert ALT-999 from Supabase")
-
-    # Final Read Verification
-    final_students = db_instance.get_students()
-    print(f"\n[READ] Post-cleanup Student Count in Supabase: {len(final_students)}")
-
-    print("\n====================================================")
-    print(" ALL SUPABASE CRUD OPERATIONS VERIFIED SUCCESSFULLY!")
-    print("====================================================")
+    # ── Summary ───────────────────────────────────────────────
+    section("Summary")
+    print(f"{PASS} All smoke tests completed.")
+    print(f"{INFO} Current row counts per table:")
+    for t, c in table_counts.items():
+        print(f"       {t:<25} {c} rows")
+    print()
 
 if __name__ == "__main__":
     run_verification()

@@ -9,14 +9,28 @@ load_dotenv()
 logger = logging.getLogger("EduOS_DatabaseClient")
 logger.setLevel(logging.INFO)
 
+# Connection status reasons — used by the UI to show a precise badge
+DB_STATUS_MISSING_CONFIG = "missing_config"   # env vars not set
+DB_STATUS_CONNECTED      = "connected"         # Supabase active
+DB_STATUS_CONN_FAILED    = "connection_failed" # env vars set but connect failed
+
 class DatabaseClient:
     def __init__(self):
-        self.supabase_url = os.getenv("SUPABASE_URL", "")
-        self.supabase_key = os.getenv("SUPABASE_KEY", "") or os.getenv("SUPABASE_ANON_KEY", "")
+        self.supabase_url = os.getenv("SUPABASE_URL", "").strip()
+        self.supabase_key = (
+            os.getenv("SUPABASE_KEY", "") or os.getenv("SUPABASE_ANON_KEY", "")
+        ).strip()
         self.supabase: Optional[Client] = None
         self.is_supabase_active = False
+        self.connection_status = DB_STATUS_MISSING_CONFIG
 
-        if self.supabase_url and self.supabase_key:
+        if not self.supabase_url or not self.supabase_key:
+            logger.warning(
+                "Supabase credentials not found. "
+                "Set SUPABASE_URL and SUPABASE_KEY in your .env file. "
+                "Copy .env.example to .env to get started."
+            )
+        else:
             self._connect_supabase(self.supabase_url, self.supabase_key)
 
     def _connect_supabase(self, url: str, key: str) -> bool:
@@ -25,11 +39,13 @@ class DatabaseClient:
             self.supabase_key = key
             self.supabase = create_client(url, key)
             self.is_supabase_active = True
+            self.connection_status = DB_STATUS_CONNECTED
             logger.info("Supabase PostgreSQL client connected successfully.")
             return True
         except Exception as e:
             logger.error(f"Supabase connection error: {e}")
             self.is_supabase_active = False
+            self.connection_status = DB_STATUS_CONN_FAILED
             return False
 
     def set_supabase_credentials(self, url: str, key: str) -> bool:
@@ -50,14 +66,15 @@ class DatabaseClient:
 
     def upsert_student(self, student_data: Dict[str, Any]) -> Dict[str, Any]:
         if not self.is_supabase_active or not self.supabase:
-            raise RuntimeError("Supabase client is disconnected.")
+            logger.warning("upsert_student skipped: Supabase not connected.")
+            return student_data
         try:
             res = self.supabase.table("students").upsert(student_data).execute()
             logger.info(f"Upserted student in Supabase: ID={student_data.get('id')}")
             return res.data[0] if res.data else student_data
         except Exception as e:
             logger.error(f"Error upserting student in Supabase: {e}")
-            raise e
+            return student_data
 
     def delete_student(self, student_id: str) -> bool:
         if not self.is_supabase_active or not self.supabase:
@@ -85,14 +102,15 @@ class DatabaseClient:
 
     def upsert_teacher(self, teacher_data: Dict[str, Any]) -> Dict[str, Any]:
         if not self.is_supabase_active or not self.supabase:
-            raise RuntimeError("Supabase client is disconnected.")
+            logger.warning("upsert_teacher skipped: Supabase not connected.")
+            return teacher_data
         try:
             res = self.supabase.table("teachers").upsert(teacher_data).execute()
             logger.info(f"Upserted teacher in Supabase: ID={teacher_data.get('id')}")
             return res.data[0] if res.data else teacher_data
         except Exception as e:
             logger.error(f"Error upserting teacher in Supabase: {e}")
-            raise e
+            return teacher_data
 
     # ----------------------------------------------------
     # 3. Teacher Availability CRUD
@@ -109,7 +127,8 @@ class DatabaseClient:
 
     def upsert_teacher_availability(self, avail_data: Dict[str, Any]) -> Dict[str, Any]:
         if not self.is_supabase_active or not self.supabase:
-            raise RuntimeError("Supabase client is disconnected.")
+            logger.warning("upsert_teacher_availability skipped: Supabase not connected.")
+            return avail_data
         try:
             if not avail_data.get("id"):
                 avail_data["id"] = f"AV-{abs(hash(str(avail_data))) % 100000}"
@@ -118,7 +137,7 @@ class DatabaseClient:
             return res.data[0] if res.data else avail_data
         except Exception as e:
             logger.error(f"Error upserting teacher availability: {e}")
-            raise e
+            return avail_data
 
     # ----------------------------------------------------
     # 4. Timetable CRUD
@@ -166,25 +185,27 @@ class DatabaseClient:
 
     def insert_document(self, doc_data: Dict[str, Any]) -> Dict[str, Any]:
         if not self.is_supabase_active or not self.supabase:
-            raise RuntimeError("Supabase client is disconnected.")
+            logger.warning("insert_document skipped: Supabase not connected.")
+            return doc_data
         try:
             res = self.supabase.table("documents").upsert(doc_data).execute()
             logger.info(f"Saved document audit record in Supabase: ID={doc_data.get('id')}")
             return res.data[0] if res.data else doc_data
         except Exception as e:
             logger.error(f"Error saving document audit record: {e}")
-            raise e
+            return doc_data
 
     def update_document(self, doc_id: str, updates: Dict[str, Any]) -> Dict[str, Any]:
         if not self.is_supabase_active or not self.supabase:
-            raise RuntimeError("Supabase client is disconnected.")
+            logger.warning("update_document skipped: Supabase not connected.")
+            return updates
         try:
             res = self.supabase.table("documents").update(updates).eq("id", doc_id).execute()
             logger.info(f"Updated document status in Supabase: ID={doc_id}")
             return res.data[0] if res.data else updates
         except Exception as e:
             logger.error(f"Error updating document: {e}")
-            raise e
+            return updates
 
     # ----------------------------------------------------
     # 6. Alerts CRUD

@@ -14,7 +14,11 @@ from data_store import (
     process_and_save_timetable_input,
     add_copilot_message
 )
-from db_client import db_instance
+from copilot_engine import answer_question, classify_intent
+from groq_client import groq_client
+from db_client import db_instance, DB_STATUS_CONNECTED, DB_STATUS_MISSING_CONFIG, DB_STATUS_CONN_FAILED
+from analytics_engine import generate_all_insights
+from staffing_engine import calculate_staffing_report
 
 # 1. Page Configuration
 st.set_page_config(
@@ -117,7 +121,15 @@ st.markdown("""
 
 # 3. Top Header & Database Connection Status
 unresolved_count = len([a for a in st.session_state.alerts if not a.get("resolved")])
-db_status_text = "⚡ Supabase Postgres Active" if db_instance.is_supabase_active else "🔴 Database Disconnected"
+if db_instance.connection_status == DB_STATUS_CONNECTED:
+    db_status_text = "⚡ Supabase Postgres Active"
+    db_badge_class = "badge-emerald"
+elif db_instance.connection_status == DB_STATUS_MISSING_CONFIG:
+    db_status_text = "⚙️ DB Config Missing"
+    db_badge_class = "badge-amber"
+else:
+    db_status_text = "🔴 DB Connection Failed"
+    db_badge_class = "badge-rose"
 
 col_header, col_status = st.columns([3, 1])
 with col_header:
@@ -132,7 +144,7 @@ with col_header:
 with col_status:
     st.markdown(f"""
         <div style="text-align: right; margin-top: 10px;">
-            <span class="badge-emerald">{db_status_text}</span>
+            <span class="{db_badge_class}">{db_status_text}</span>
             <br/><span style="font-size: 0.75rem; color: #94a3b8;">Active Alerts: <strong>{unresolved_count}</strong></span>
         </div>
     """, unsafe_allow_html=True)
@@ -175,9 +187,19 @@ with st.sidebar:
 
     st.markdown("---")
     with st.expander("⚡ Database & AI Status"):
-        st.write(f"**Supabase Host:** `{db_instance.supabase_url}`")
+        st.write(f"**Supabase Host:** `{db_instance.supabase_url or 'Not configured'}`")
         st.write(f"**Groq Model:** `llama-3.3-70b-versatile`")
         st.write(f"**Timetable Solver:** `Google OR-Tools CP-SAT`")
+        if db_instance.connection_status == DB_STATUS_MISSING_CONFIG:
+            st.warning(
+                "**Database not configured.**\n\n"
+                "Copy `.env.example` to `.env` and fill in:\n"
+                "- `SUPABASE_URL`\n"
+                "- `SUPABASE_KEY`\n"
+                "- `GROQ_API_KEY`"
+            )
+        elif db_instance.connection_status == DB_STATUS_CONN_FAILED:
+            st.error("Supabase credentials were found but the connection failed. Check your URL and key.")
         if st.button("Refresh Live DB"):
             refresh_from_db()
             st.rerun()
@@ -213,12 +235,15 @@ if selected_tab == "📊 Persona Dashboard":
                 st.info("No active alerts in Supabase database.")
 
         with col_right:
-            st.markdown("#### 📈 AI Predictive Forecasts (Live DB)")
-            if st.session_state.insights:
-                for ins in st.session_state.insights:
-                    st.info(f"**{ins['title']}** ({ins.get('confidence', 90)}% Conf.): {ins['forecast']}")
+            st.markdown("#### 📈 AI Analytics Insights")
+            live_insights = st.session_state.insights
+            if live_insights:
+                for ins in live_insights[:3]:  # show top 3 on dashboard
+                    sev = ins.get("severity", "info")
+                    icon = "🔴" if sev == "critical" else ("🟡" if sev == "warning" else "🟢")
+                    st.info(f"{icon} **{ins['title']}**\n\n{ins.get('forecast', '')}")
             else:
-                st.info("No predictive insight records in database.")
+                st.info("No insight data available.")
 
     elif active_persona == "teacher":
         st.markdown("#### 📝 Class Live Attendance Marker")
@@ -519,66 +544,280 @@ elif selected_tab == "🚨 Proactive Alerts Center":
 # TAB 7: Predictive Insights Engine
 # ----------------------------------------------------
 elif selected_tab == "📈 Predictive Insights":
-    st.subheader("Feature 5 — Predictive Insights Engine")
-    if st.session_state.insights:
-        for ins in st.session_state.insights:
-            st.info(f"📈 **{ins['title']}**\n\nMetric: {ins.get('metric')} ({ins.get('trend')})\n\nForecast: {ins.get('forecast')}\n\n*AI Recommendation: {ins.get('recommendation')}*")
+    st.subheader("Feature 5 — Analytics & Insights Engine")
+    st.caption(
+        "Real-time calculations over live school data. "
+        "Works with or without Supabase. Click Recalculate after any data change."
+    )
+
+    col_btn, col_src = st.columns([1, 3])
+    with col_btn:
+        if st.button("⚡ Recalculate Insights"):
+            st.session_state.insights = generate_all_insights(
+                students=st.session_state.get("students", []),
+                teachers=st.session_state.get("teachers", []),
+                teacher_availability=st.session_state.get("teacher_availability", []),
+                timetable=st.session_state.get("timetable", []),
+                documents=st.session_state.get("documents", []),
+            )
+            st.session_state.staffing_report = calculate_staffing_report(
+                teachers=st.session_state.get("teachers", []),
+                teacher_availability=st.session_state.get("teacher_availability", []),
+                timetable=st.session_state.get("timetable", []),
+            )
+            st.rerun()
+    with col_src:
+        src = "⚡ Supabase DB" if db_instance.is_supabase_active else "💻 In-Memory (DB offline)"
+        st.caption(f"Data source: {src} · {len(st.session_state.get('students', []))} students · "
+                   f"{len(st.session_state.get('teachers', []))} teachers · "
+                   f"{len(st.session_state.get('timetable', []))} timetable slots")
+
+    st.markdown("---")
+
+    insights_list = st.session_state.get("insights", [])
+    if not insights_list:
+        st.info("📊 No insights available. Click ‘Recalculate Insights’ to generate analytics.")
     else:
-        st.info("No predictive insight records in Supabase.")
+        # Severity colour map
+        _SEV_COLOUR = {
+            "critical": ("#f87171", "rgba(244,63,94,0.12)", "🔴"),
+            "warning":  ("#fbbf24", "rgba(245,158,11,0.12)", "🟡"),
+            "info":     ("#34d399", "rgba(16,185,129,0.12)", "🟢"),
+        }
+        _CAT_ICON = {
+            "attendance": "📅",
+            "fees":       "💳",
+            "academic":   "🎓",
+            "documents":  "📄",
+            "timetable":  "🗓️",
+        }
+
+        for ins in insights_list:
+            sev   = ins.get("severity", "info")
+            colour, bg, icon = _SEV_COLOUR.get(sev, _SEV_COLOUR["info"])
+            cat   = ins.get("category", "")
+            c_icon = _CAT_ICON.get(cat, "📊")
+            conf  = ins.get("confidence", 100)
+            trend = ins.get("trend", "stable")
+
+            st.markdown(
+                f"""
+                <div style="
+                    background:{bg};
+                    border:1px solid {colour}40;
+                    border-left:4px solid {colour};
+                    border-radius:12px;
+                    padding:18px 22px;
+                    margin-bottom:14px;
+                ">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                        <span style="font-size:1.05rem;font-weight:700;color:#f1f5f9;">
+                            {c_icon} {ins.get('title','')}
+                        </span>
+                        <span style="font-size:0.72rem;color:{colour};font-weight:600;
+                                     background:{colour}20;padding:3px 10px;border-radius:20px;">
+                            {icon} {sev.upper()} &nbsp;·&nbsp; {conf}% confidence
+                        </span>
+                    </div>
+                    <div style="font-size:1.1rem;font-weight:800;color:{colour};margin-bottom:6px;">
+                        {ins.get('metric','')}
+                    </div>
+                    <div style="font-size:0.88rem;color:#cbd5e1;margin-bottom:6px;">
+                        {ins.get('forecast','')}
+                    </div>
+                    <div style="font-size:0.82rem;color:#94a3b8;">
+                        → <em>{ins.get('recommendation','')}</em>
+                    </div>
+                    <div style="font-size:0.72rem;color:#475569;margin-top:6px;">
+                        Trend: {trend}
+                    </div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+    # ── Smart Staffing Forecast ──────────────────────────────────────────────
+    st.markdown("---")
+    st.markdown("### 👥 Smart Staffing Risk Score")
+    st.caption(
+        "Projected staffing pressure based on current workload and availability. "
+        "Deterministic rule-based score — not a machine-learning model."
+    )
+
+    sr = st.session_state.get("staffing_report") or calculate_staffing_report(
+        teachers=st.session_state.get("teachers", []),
+        teacher_availability=st.session_state.get("teacher_availability", []),
+        timetable=st.session_state.get("timetable", []),
+    )
+
+    if not sr.get("has_sufficient_data"):
+        st.info(
+            "📊 Insufficient teacher data to generate a staffing forecast. "
+            "Add teacher records via the Teacher Availability & Roster tab."
+        )
+    else:
+        _SCORE_COLOUR = {
+            "LOW":      ("#34d399", "rgba(16,185,129,0.15)"),
+            "MODERATE": ("#fbbf24", "rgba(245,158,11,0.15)"),
+            "HIGH":     ("#f97316", "rgba(249,115,22,0.15)"),
+            "CRITICAL": ("#f87171", "rgba(244,63,94,0.15)"),
+        }
+        score  = sr["staffing_pressure_score"]
+        level  = sr["staffing_pressure_level"]
+        colour, bg = _SCORE_COLOUR.get(level, _SCORE_COLOUR["LOW"])
+
+        # Score banner
+        st.markdown(
+            f"""
+            <div style="background:{bg};border:1px solid {colour}40;
+                        border-left:5px solid {colour};border-radius:14px;
+                        padding:20px 24px;margin-bottom:18px;">
+                <div style="font-size:0.8rem;color:#94a3b8;font-weight:600;
+                            letter-spacing:0.08em;margin-bottom:4px;">STAFFING HEALTH</div>
+                <div style="display:flex;align-items:baseline;gap:14px;">
+                    <span style="font-size:3rem;font-weight:900;color:{colour};">{score}</span>
+                    <span style="font-size:1rem;color:{colour};font-weight:700;">/100 · {level}</span>
+                </div>
+                <div style="font-size:0.82rem;color:#cbd5e1;margin-top:6px;">{sr['explanation']}</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        # Four KPI tiles
+        k1, k2, k3, k4 = st.columns(4)
+        k1.metric(
+            "Available Teachers",
+            f"{sr['available_teachers']} / {sr['total_teachers']}",
+            f"{sr['availability_pct']}%",
+        )
+        k2.metric(
+            "Avg Teaching Load",
+            f"{sr['avg_workload']} slots",
+            f"Max: {sr['max_workload']}",
+        )
+        k3.metric(
+            "Coverage Risk",
+            f"{sr['uncovered_slots']} uncovered",
+            f"{sr['coverage_pct']}% covered",
+            delta_color="inverse",
+        )
+        k4.metric(
+            "Substitute Requirement",
+            f"{sr['substitute_required']} slot(s)",
+            f"{sr['substitute_slots']} active subs",
+        )
+
+        # Score breakdown expander
+        with st.expander("🔍 Score Breakdown (formula details)"):
+            bd = sr["score_breakdown"]
+            st.markdown(
+                f"""| Signal | Weight | Value | Contribution |
+| --- | --- | --- | --- |
+| A — Unavailability ratio | 35 | {sr['unavailable_teachers']}/{sr['total_teachers']} teachers | {bd['signal_a']} |
+| B — Timetable conflict ratio | 30 | {sr['uncovered_slots']}/{sr['total_slots']} slots | {bd['signal_b']} |
+| C — Workload overload ratio | 20 | {sr['overloaded_count']}/{sr['total_teachers']} teachers | {bd['signal_c']} |
+| D — Substitute dependency ratio | 15 | {sr['substitute_slots']}/{sr['total_slots']} slots | {bd['signal_d']} |
+| **Total** | **100** | | **{score}** |"""
+            )
+
+        # Workload per teacher
+        if sr["slots_per_teacher"]:
+            with st.expander("📊 Teacher Workload Breakdown"):
+                import pandas as pd
+                wl_df = pd.DataFrame(
+                    [{"Teacher": k, "Slots": v,
+                      "Status": "⚠️ Overloaded" if v > sr["overload_threshold"] else "✅ Normal"}
+                     for k, v in sorted(sr["slots_per_teacher"].items(),
+                                        key=lambda x: x[1], reverse=True)]
+                )
+                st.dataframe(wl_df, use_container_width=True, hide_index=True)
+
+        # Recommendations
+        st.markdown("#### 📌 Staffing Recommendations")
+        for i, rec in enumerate(sr["recommendations"], 1):
+            st.markdown(
+                f"""
+                <div style="background:rgba(99,102,241,0.08);border-left:3px solid #6366f1;
+                            border-radius:8px;padding:10px 16px;margin-bottom:8px;
+                            font-size:0.88rem;color:#e2e8f0;">
+                    <strong>{i}.</strong> {rec}
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
 
 # ----------------------------------------------------
-# TAB 8: AI Copilot (NLQ)
+# TAB 8: AI Copilot (NLQ) — Grounded Intelligence Layer
 # ----------------------------------------------------
 elif selected_tab == "🤖 AI Copilot (NLQ)":
-    st.subheader("Feature 6 — AI Copilot (Natural Language Query over Supabase Data)")
-    
-    for msg in st.session_state.copilot_messages:
-        with st.chat_message(msg.get("sender", "user")):
-            st.write(msg.get("text", ""))
-            if msg.get("sql"):
-                st.code(msg["sql"], language="sql")
-            if msg.get("table_data"):
-                st.dataframe(pd.DataFrame(msg["table_data"]))
+    st.subheader("Feature 6 — AI Copilot")
+    st.caption(
+        "Grounded natural-language interface over live school data. "
+        "All numerical answers come from the Analytics & Staffing engines — the LLM only explains them."
+    )
 
-    prompt = st.chat_input("Ask a question about school data (e.g., 'Which students have attendance below 75%?')...")
+    # Example questions
+    st.markdown(
+        """
+        <div style="background:rgba(99,102,241,0.08);border:1px solid rgba(99,102,241,0.2);
+                    border-radius:12px;padding:14px 18px;margin-bottom:16px;font-size:0.82rem;color:#94a3b8;">
+            <strong style="color:#a5b4fc;">Try asking:</strong>&nbsp;
+            "How is our staffing situation?" &nbsp;·&nbsp;
+            "Which teachers are overloaded?" &nbsp;·&nbsp;
+            "Are there any timetable conflicts?" &nbsp;·&nbsp;
+            "How many students are at attendance risk?" &nbsp;·&nbsp;
+            "Give me a school operations summary."
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # Groq status badge
+    if groq_client.is_available():
+        st.markdown('<span class="badge-emerald">⚡ Groq LLM Active</span>', unsafe_allow_html=True)
+    else:
+        st.markdown(
+            '<span class="badge-amber">⚙️ Groq API key missing — deterministic fallback active</span>',
+            unsafe_allow_html=True,
+        )
+
+    st.markdown("")
+
+    # Render conversation history
+    for msg in st.session_state.copilot_messages:
+        sender = msg.get("sender", "user")
+        with st.chat_message(sender):
+            st.write(msg.get("text", ""))
+
+    # Chat input
+    prompt = st.chat_input("Ask about students, attendance, fees, teachers, timetable, staffing...")
     if prompt:
-        user_msg = {"sender": "user", "text": prompt}
-        add_copilot_message(user_msg)
-        
-        lower = prompt.lower()
-        if "attendance" in lower and ("75" in lower or "below" in lower or "<" in lower):
-            low_att = [s for s in st.session_state.students if float(s.get("attendance_pct", 100)) < 75.0]
-            ai_msg = {
-                "sender": "ai",
-                "text": f"Found {len(low_att)} student(s) with attendance below 75% threshold in Supabase Database.",
-                "sql": "SELECT name, class, attendance_pct FROM students WHERE attendance_pct < 75.0;",
-                "table": [
-                    {"name": s.get("name"), "class": s.get("class"), "attendance_pct": s.get("attendance_pct"), "risk_level": s.get("risk_level")}
-                    for s in low_att
-                ]
-            }
-            add_copilot_message(ai_msg)
-        elif "fee" in lower or "overdue" in lower:
-            overdue = [s for s in st.session_state.students if s.get("fee_status") == "overdue"]
-            ai_msg = {
-                "sender": "ai",
-                "text": f"Found {len(overdue)} student(s) with overdue fees in Supabase Database.",
-                "sql": "SELECT name, class, fee_amount_due FROM students WHERE fee_status = 'overdue';",
-                "table": [
-                    {"name": s.get("name"), "class": s.get("class"), "fee_status": s.get("fee_status"), "fee_amount_due": s.get("fee_amount_due")}
-                    for s in overdue
-                ]
-            }
-            add_copilot_message(ai_msg)
-        else:
-            ai_msg = {
-                "sender": "ai",
-                "text": f"Executed read-only query over Supabase Database. Retrieved records.",
-                "sql": "SELECT * FROM students LIMIT 5;",
-                "table": [
-                    {"name": s.get("name"), "class": s.get("class"), "attendance_pct": s.get("attendance_pct"), "gpa": s.get("gpa")}
-                    for s in st.session_state.students[:3]
-                ]
-            }
-            add_copilot_message(ai_msg)
+        # 1. Save user message
+        add_copilot_message({"sender": "user", "text": prompt})
+
+        # 2. Build conversation history for context (exclude current prompt)
+        history = [
+            {"role": "user" if m["sender"] == "user" else "assistant", "content": m["text"]}
+            for m in st.session_state.copilot_messages[:-1]  # exclude the message just added
+            if m.get("text")
+        ]
+
+        # 3. Get grounded answer from copilot engine
+        with st.spinner("Thinking..."):
+            answer, intent = answer_question(
+                question=prompt,
+                students=st.session_state.get("students", []),
+                teachers=st.session_state.get("teachers", []),
+                teacher_availability=st.session_state.get("teacher_availability", []),
+                timetable=st.session_state.get("timetable", []),
+                documents=st.session_state.get("documents", []),
+                conversation_history=history,
+                groq_client_instance=groq_client,
+                existing_insights=st.session_state.get("insights"),
+                existing_staffing_report=st.session_state.get("staffing_report"),
+            )
+
+        # 4. Save and display AI response
+        add_copilot_message({"sender": "ai", "text": answer})
         st.rerun()
