@@ -1,202 +1,306 @@
-# EduOS AI — The Autonomous School Operating System
-### Product Requirements Document + Execution Plan
+# EduOS AI — Autonomous School Operating System
+> **Transforming fragmented school operations into an intelligent, proactive operating system with Groq AI, Google OR-Tools, and Supabase.**
+
+[![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://www.python.org/)
+[![Streamlit](https://img.shields.io/badge/Streamlit-1.30%2B-FF4B4B.svg)](https://streamlit.io/)
+[![Database](https://img.shields.io/badge/Supabase-PostgreSQL-3ECF8E.svg)](https://supabase.com/)
+[![LLM Engine](https://img.shields.io/badge/Groq-Llama--3.3--70B-F55036.svg)](https://groq.com/)
+[![Solver](https://img.shields.io/badge/Google-OR--Tools%20CP--SAT-4285F4.svg)](https://developers.google.com/optimization)
 
 ---
 
-## 1. Product Overview
+## 1. Problem Statement
 
-EduOS AI is an AI-powered school operations platform that unifies fragmented administrative, academic, scheduling, documentation, and resource-management workflows into a single intelligent system. It converts raw school data into automated workflows, proactive alerts, optimized schedules, predictive insights, and AI-assisted decisions.
+Modern educational institutions rely on disconnected administrative systems and manual workflows:
+- **Manual Paperwork & Data Entry:** Physical admission forms, fee receipts, and leaves require tedious manual digitization prone to human error.
+- **Timetable Clashes & Staffing Churn:** Sudden teacher absences cause scheduling chaos that manual spreadsheets cannot resolve in real time.
+- **Siloed Databases:** Student attendance, fee ledgers, academic records, and schedules reside in disconnected databases with no unified view.
+- **Reactive Management:** Administration only notices student drop-out risks, fee defaults, or staffing shortages after problems escalate.
 
-## 2. Problem Statement
+---
 
-Schools run on disconnected systems and manual processes:
+## 2. Solution Overview
 
-1. **Manual Documentation** — physical forms/PDFs need manual entry; repetitive entry causes errors and wastes admin time.
-2. **Scheduling Conflicts** — teachers, classrooms, labs, and classes are scheduled separately; changes create timetable clashes.
-3. **Siloed Systems** — student, attendance, fee, academic, and timetable data live in separate systems that don't talk to each other.
-4. **Reactive Administration** — problems surface only after they've happened; no proactive monitoring.
-5. **No Predictive Intelligence** — historical data is stored but never used to forecast staffing, enrollment, attendance, or resource needs.
+**EduOS AI** unifies administrative, academic, and scheduling workflows into a single intelligent operating system:
+1. **Automates Ingestion:** Extracts structured data from raw forms, PDFs, and roster notes via Groq OCR & LLM pipelines with Pydantic validation.
+2. **Eliminates Conflicts:** Formulates master schedules and real-time substitute reassignments as a mathematical constraint satisfaction problem solved by Google OR-Tools CP-SAT.
+3. **Connects Data:** Unifies Student, Teacher, Attendance, Fee, and Schedule data in Supabase with Role-Based Access Control (RBAC).
+4. **Delivers Grounded Intelligence:** Provides natural-language querying (AI Copilot) and deterministic risk metrics for staffing and attendance.
 
-**Result:** more admin work, slower decisions, duplicated effort, higher error rates.
+---
 
-## 3. Product Vision
+## 3. System Architecture & Workflow
 
-> Turn school data into intelligent, proactive action.
+```mermaid
+flowchart TD
+    subgraph Ingestion["1. Multi-Slot Ingestion Layer"]
+        A1[Admission / Receipt / Roster Inputs] --> A2[OCR & Groq LLM Llama 3.3 70B]
+        A2 --> A3[Pydantic Schema Validation & Repair]
+        A3 --> A4[Human-in-the-Loop Review Queue]
+    end
 
-| From | To |
-|---|---|
-| Manual | Digital |
-| Reactive | Proactive |
-| Fragmented | Unified |
-| Data Storage | Data Intelligence |
+    subgraph Optimization["2. Intelligent Engines"]
+        B1[Google OR-Tools CP-SAT Solver] --> B2[Conflict-Free Timetable & Substitute Matrix]
+        B3[Deterministic Analytics Engine] --> B4[Attendance Risk & Fee Projections]
+        B5[Staffing Pressure Engine] --> B6[4-Signal Staffing Risk Score & Recommendations]
+    end
 
-## 4. Target Users / Personas
+    subgraph Storage["3. Unified Data Layer"]
+        A4 --> DB[(Supabase PostgreSQL)]
+        B2 --> DB
+        B4 --> DB
+        DB --> RBAC[Role-Based Access Control - JWT & bcrypt]
+    end
 
-### Persona 1 — School Administrator
-- **Goals:** manage operations, monitor problems, generate reports, decide faster
-- **Pain points:** paperwork overload, scattered data, hard to spot problems early
-- **Needs:** central dashboard, automated alerts, AI Copilot, predictive insights
-
-### Persona 2 — Teacher
-- **Goals:** manage classes, record attendance, track performance, view timetable
-- **Pain points:** manual attendance, timetable churn, hard to monitor students
-- **Needs:** simple attendance UI, smart timetable, student insights
-
-### Persona 3 — Student
-- **Goals:** view timetable, monitor progress, get relevant notifications
-- **Needs:** personal dashboard, attendance, academic info, schedule
-
-### Persona 4 — Parent
-- **Goals:** monitor child's progress, receive important alerts
-- **Needs:** attendance updates, academic reports, notifications
-
-## 5. Product Goals
-
-**Primary goals**
-- Centralize school operational data
-- Automate document processing
-- Reduce manual administrative work
-- Generate conflict-free timetables
-- Provide proactive alerts
-- Use historical data for predictions
-- Provide natural-language access to school data (AI Copilot / NLQ over school data)
-
-**Non-goals for MVP**
-- Full accounting system
-- Complete ERP replacement
-- Advanced biometric attendance
-- Mobile applications
-- Complex parent communication system
-- Fully autonomous decision-making (human stays in the loop)
-
-## 6. Core Features
-
-### Feature 1 — AI Document Reader (MVP anchor feature)
-**Objective:** convert unstructured documents into structured school data.
-
-**Input:** PDF, image, scanned form
-
-**Pipeline:**
-```
-Document → OCR → Text Extraction → LLM/Information Extraction
-→ Structured JSON → Validation → Database
+    subgraph Presentation["4. Personas & Interfaces"]
+        RBAC --> P1[Admin Operations Overview]
+        RBAC --> P2[Teacher Dashboard & Attendance]
+        RBAC --> P3[Student Portal]
+        RBAC --> P4[Parent Fee & Attendance Portal]
+        DB --> C1[AI Copilot - Grounded NLQ]
+    end
 ```
 
-**Example**
-Input (Admission Form): `Name: Rahul, Class: 8A, Parent: XYZ`
-Output:
-```json
-{
-  "student_name": "Rahul",
-  "class": "8A",
-  "parent_name": "XYZ"
-}
+---
+
+## 4. Key Implemented Features
+
+### 📄 1. AI Document Reader (Multi-Slot Intake)
+- **Multi-Slot Inputs:** Accepts admission forms and fee receipts via picture upload, document file (PDF/CSV/TXT), or raw pasted text.
+- **Schema-Constrained LLM Extraction:** Extracts strict JSON using Groq AI (`llama-3.3-70b-versatile`).
+- **Validation & Audit Trail:** Validates all extracted fields through Pydantic models with automated JSON repair.
+- **Human-in-the-Loop Commit:** Provides an administrative review queue before committing student records to Supabase.
+
+### 👩‍🏫 2. Teacher Availability & Roster Parser
+- Digitizes unstructured teacher roster text and availability constraints.
+- Tracks faculty directory, assigned classes, and custom unavailability rules (e.g., leave days, unavailable periods).
+
+### 🗓️ 3. Smart Timetable Engine (Google OR-Tools CP-SAT)
+- Solves class scheduling with hard constraints (no double-booking of teachers, rooms, or class sections).
+- **One-Click Substitute Assignment:** When a teacher is toggled absent, the CP-SAT constraint solver reassigns available faculty without disrupting unaffected slots.
+
+### 📈 4. Predictive Insights & Analytics
+- Deterministic analysis computed directly over live school data.
+- Identifies students below the 75% attendance threshold, tracks fee overdue patterns, and projects risk levels.
+
+### 📊 5. Smart Staffing Risk Score & Recommendations
+- Calculates a 0–100 staffing pressure score across 4 weighted operational signals:
+  - **Signal A (35%):** Teacher unavailability ratio.
+  - **Signal B (30%):** Uncovered timetable slot ratio.
+  - **Signal C (20%):** Teacher overload ratio.
+  - **Signal D (15%):** Substitute dependency ratio.
+- Generates actionable workload and hiring recommendations for school administrators.
+
+### 🤖 6. Grounded AI Copilot (Natural-Language Query)
+- Natural-language query interface over live institutional data.
+- Numerical facts and metrics are retrieved directly from the Analytics and Staffing engines, preventing LLM hallucinations.
+- Features automatic intent classification and deterministic offline fallback.
+
+### 🚨 7. Proactive Alerts Center
+- Real-time rule-based monitoring for critical attendance drops, timetable clashes, unpaid fees, and staffing shortages.
+- Scopes alerts to relevant user roles.
+
+### 🗄️ 8. Unified Data Layer
+- Central source of truth joining Student ID $\leftrightarrow$ Attendance $\leftrightarrow$ Fee Ledger $\leftrightarrow$ Master Timetable.
+
+### 👥 9. Four Tailored User Personas
+- **Admin:** Complete institutional oversight, document intake, timetable solver, analytics, and copilot.
+- **Teacher:** Quick class attendance marking (present/absent) with instant Supabase updates and faculty timetable.
+- **Student:** Personal timetable view, academic GPA, attendance progress, and fee ledger status.
+- **Parent:** Child monitoring portal, attendance threshold tracking, and simulated fee payment.
+
+---
+
+## 5. Technology Stack
+
+| Layer | Technology | Purpose |
+| :--- | :--- | :--- |
+| **Frontend & UI** | **Streamlit (1.30+)** | Interactive multi-persona responsive web application |
+| **Design System** | **Vanilla CSS + Inter Typography** | Custom enterprise design system with light cards and status badges |
+| **Database** | **Supabase (PostgreSQL)** | Persistent cloud storage for students, faculty, schedules, and alerts |
+| **LLM Engine** | **Groq (`llama-3.3-70b-versatile`)** | High-throughput structured document extraction and natural-language query |
+| **Optimization Solver** | **Google OR-Tools (CP-SAT)** | Constraint satisfaction solver for master timetables and substitution logic |
+| **Data Validation** | **Pydantic (v2)** | Strict schema validation, sanitization, and JSON parsing |
+| **Authentication** | **PyJWT & bcrypt** | Cryptographic password hashing and Role-Based Access Control (RBAC) |
+| **Data Analysis** | **Pandas & NumPy** | In-memory data manipulation, metrics calculation, and dataframe rendering |
+
+---
+
+## 6. Repository Structure
+
+```text
+EduOS-AI/
+├── .env.example              # Template for environment configuration
+├── requirements.txt          # Python dependencies
+├── schema.sql                # Supabase PostgreSQL database schema & RLS policies
+├── seed_dev_users.py         # Development user account seed script
+├── verify_supabase.py        # Database connectivity & schema smoke test script
+├── app.py                    # Main Streamlit application entry point & router
+├── ui_components.py          # Unified design system, CSS injection, and UI cards
+├── auth.py                   # JWT issuance, bcrypt hashing, and RBAC permissions
+├── data_store.py             # Session state store, sync helpers, and action handlers
+├── db_client.py              # Supabase database client interface (CRUD operations)
+├── env_config.py             # Environment variable validation & diagnostic utilities
+├── groq_client.py            # Groq API client with JSON extraction and fallback
+├── doc_parser.py             # Admission form OCR and structured parsing pipeline
+├── teacher_parser.py         # Faculty roster and availability constraint parser
+├── timetable_parser.py       # Timetable schedule extraction pipeline
+├── timetable_solver.py       # Google OR-Tools CP-SAT timetable optimization solver
+├── analytics_engine.py       # Deterministic analytics, attendance risk & fee forecasts
+├── staffing_engine.py        # Staffing pressure score formula and recommendations
+├── copilot_engine.py         # Grounded AI Copilot NLQ engine and intent classifier
+├── validation.py             # Pydantic schemas, validation models, and JSON repair
+└── tests/                    # Automated test suite
+    ├── test_analytics_engine.py
+    ├── test_copilot_engine.py
+    ├── test_groq_integration.py
+    └── test_staffing_engine.py
 ```
 
-**Acceptance criteria**
-- User can upload a document
-- System extracts relevant fields
-- Extracted data can be reviewed before commit
-- Valid data is stored in the database
-- Invalid/missing fields generate warnings, not silent failures
+---
 
-**Suggested implementation:** Tesseract/PaddleOCR (or a hosted OCR API) for text extraction on scanned inputs → Claude API for schema-guided field extraction (structured JSON output, prompted per document type: admission form, fee receipt, leave application, etc.) → a Pydantic schema validation layer → human-in-the-loop review screen → Postgres write.
+## 7. Getting Started
 
-### Feature 2 — Smart Timetable Engine
-**Objective:** generate and maintain conflict-free timetables across teachers, classrooms, labs, and sections.
-- Constraint-based scheduling (teacher availability, room capacity, subject-hour requirements, no double-booking)
-- Auto-detects and flags conflicts when a manual edit is made
-- Re-optimizes affected slots only (not a full regenerate) when a teacher is absent or a room is unavailable
-- **Acceptance criteria:** zero double-bookings in generated output; edits are validated in real time; substitution suggestions offered when a teacher is marked absent
+### Prerequisites
+- Python 3.10, 3.11, 3.12, or 3.13
+- A [Supabase](https://supabase.com/) project (PostgreSQL database)
+- A [Groq](https://console.groq.com/) API Key *(optional, deterministic fallbacks available)*
 
-### Feature 3 — Unified Data Layer
-**Objective:** single source of truth joining student, attendance, fee-status, academic, and timetable records that today live in silos.
-- Common student/staff ID across modules
-- Read APIs that let every other feature (alerts, copilot, predictions) query across domains without custom integrations
-- **Acceptance criteria:** a single query can return a student's attendance + academic + fee status together
+### Step 1: Clone and Set Up Virtual Environment
 
-### Feature 4 — Proactive Alerts & Monitoring
-**Objective:** surface problems before they escalate, instead of after.
-- Rule-based triggers to start (e.g., attendance drops below threshold, fee overdue, grade decline over N assessments, room/teacher conflict introduced)
-- Alerts routed to the right persona (admin, teacher, or parent) with context
-- **Acceptance criteria:** alert fires within a defined SLA of the triggering event; no duplicate alerts for the same unresolved condition
+```bash
+git clone https://github.com/Rani2025-tech/EduOS-AI.git
+cd EduOS-AI
 
-### Feature 5 — Predictive Insights (post-MVP, data-dependent)
-**Objective:** use historical data to forecast attendance trends, at-risk students, enrollment, and staffing/resource needs.
-- Starts as simple statistical baselines (moving averages, trend lines) before any ML model, since there won't be enough historical data at launch to train reliably
-- **Acceptance criteria:** predictions ship with a confidence indicator and are clearly labeled as forecasts, not facts
+# Create virtual environment
+python -m venv venv
 
-### Feature 6 — AI Copilot (Natural-Language Query over School Data)
-**Objective:** let admins/teachers ask questions in plain language ("Which students in 8A have attendance below 75% this month?") and get answers grounded in the Unified Data Layer.
-- RAG-style retrieval over structured records (query translated to a safe, scoped DB query — not free-form SQL execution) plus LLM for summarization/explanation
-- **Acceptance criteria:** answers are traceable to underlying records; the copilot never writes to the database, only reads
+# Activate virtual environment
+# Windows (PowerShell):
+.\venv\Scripts\Activate.ps1
+# macOS / Linux:
+source venv/bin/activate
 
-## 7. Non-Functional Requirements
-- **Data privacy:** student data is sensitive (minors) — role-based access control is mandatory from day one, not a later add-on
-- **Auditability:** every automated write (document extraction, alert, timetable change) should be traceable to its source
-- **Human-in-the-loop:** AI Document Reader and Predictive Insights must always have a review/override step before data is treated as authoritative
-- **Availability:** core scheduling and attendance flows should degrade gracefully (read-only fallback) if the AI layer is down
+# Install dependencies
+pip install -r requirements.txt
+```
 
-## 8. Suggested Tech Stack
+### Step 2: Configure Environment Variables
 
-Given your existing stack (FastAPI, React/Vite, LangChain/RAG, FAISS, Claude API), a natural fit is:
+Copy `.env.example` to `.env`:
 
-| Layer | Choice | Why |
-|---|---|---|
-| Backend API | FastAPI | You already build full-stack apps on this; async support suits document pipelines |
-| Frontend | React + Vite | Consistent with your other projects |
-| Database | PostgreSQL | Relational integrity for student/attendance/fee/timetable joins; Unified Data Layer needs this |
-| OCR | Tesseract / PaddleOCR (self-hosted) or a hosted OCR API | Start free/self-hosted; swap later if accuracy demands it |
-| Extraction LLM | Claude API (structured/JSON output) | Already in your toolkit, good at schema-constrained extraction |
-| Copilot retrieval | LangChain + a scoped query layer (not raw FAISS over documents — this data is structured, so retrieval is mostly SQL-backed, with FAISS reserved for any unstructured doc search) | Matches your RAG experience while fitting structured data |
-| Scheduling engine | Constraint solver (e.g., Google OR-Tools CP-SAT) | Purpose-built for conflict-free timetabling, not something to hand-roll |
-| Auth | JWT + role-based access (admin/teacher/student/parent) | Required given FERPA-style sensitivity of student data |
+```bash
+cp .env.example .env
+```
 
-## 9. MVP Scope (what ships first)
+Fill in your configuration in `.env`:
 
-To keep this buildable solo, MVP = **Feature 1 (AI Document Reader) + Feature 3 (Unified Data Layer, minimal) + Feature 2 (basic Smart Timetable)**. Alerts, Predictive Insights, and the Copilot are v2/v3 — they all depend on the Unified Data Layer existing first, so sequencing matters more than parallelizing.
+```ini
+# Supabase Project Configuration
+SUPABASE_URL=https://your-project-id.supabase.co
+SUPABASE_KEY=your-supabase-anon-key
 
-## 10. Execution Plan / Roadmap
+# Groq LLM API Key
+GROQ_API_KEY=gsk_your_groq_api_key
 
-### Phase 0 — Foundations (Week 1–2)
-- Define core data model: Student, Staff, Class/Section, Attendance, Timetable, Document
-- Set up FastAPI + Postgres skeleton, auth, and role-based access
-- Set up React/Vite shell with routing for the 4 personas
+# JWT Secret Key (generate using: python -c "import secrets; print(secrets.token_hex(32))")
+JWT_SECRET_KEY=your_generated_32_byte_hex_secret
+```
 
-### Phase 1 — AI Document Reader (Week 3–5)
-- OCR pipeline for PDF/image input
-- Claude-based extraction with a per-document-type prompt/schema (start with admission form only, then expand)
-- Validation layer + review-before-commit UI
-- Store into Unified Data Layer
+### Step 3: Initialize Database Schema
 
-### Phase 2 — Unified Data Layer + Basic Dashboards (Week 6–7)
-- Cross-domain read APIs (attendance + fee + academic joined by student ID)
-- Minimal admin dashboard, teacher attendance UI, student/parent read-only views
+1. Open your **Supabase Dashboard &rarr; SQL Editor**.
+2. Copy the entire contents of [`schema.sql`](schema.sql), paste into the editor, and click **Run**.
 
-### Phase 3 — Smart Timetable Engine (Week 8–10)
-- Constraint model (teachers, rooms, subject-hours) via OR-Tools
-- Conflict detection on manual edits
-- Substitution suggestion on teacher absence
+### Step 4: Seed Development Users
 
-### Phase 4 — Proactive Alerts (Week 11–12)
-- Rule engine on top of the Unified Data Layer (attendance threshold, fee overdue, conflict introduced)
-- Notification routing by persona
+Seed default test accounts into your database:
 
-### Phase 5 — AI Copilot (Week 13–15, post-MVP)
-- Natural-language → scoped query translation over the Unified Data Layer
-- Read-only, source-traceable answers
+```bash
+# Windows PowerShell:
+$env:DEV_SEED_PASSWORD="password123"; python seed_dev_users.py
 
-### Phase 6 — Predictive Insights (Week 16+, data-dependent)
-- Ship only once there's enough historical data collected through Phases 1–4 to make baselines meaningful
+# macOS / Linux:
+DEV_SEED_PASSWORD="password123" python seed_dev_users.py
+```
 
-## 11. Success Metrics
-- % reduction in manual data-entry time (Document Reader adoption)
-- Timetable conflicts per term (target: zero at generation, near-zero after edits)
-- Alert lead time (how early a problem is flagged vs. when it would've been noticed manually)
-- Copilot query accuracy / traceability rate
+### Step 5: Verify Connectivity
 
-## 12. Key Risks
-- **OCR accuracy on messy handwritten forms** — mitigate with mandatory human review step, not full automation
-- **Data privacy for minors** — RBAC and audit logging must exist before any real student data touches the system
-- **Solo-build scope creep** — the 6-feature list is large; MVP scope in §9 is deliberately narrow to avoid stalling
-- **Cold-start for predictions** — no useful historical data at launch; Phase 6 is explicitly gated on data accumulation
+Run the diagnostic smoke test:
+
+```bash
+python verify_supabase.py
+```
+
+---
+
+## 8. Running the Application
+
+Launch the Streamlit web application:
+
+```bash
+streamlit run app.py
+```
+
+Open `http://localhost:8501` in your browser.
+
+### Test Credentials
+
+| Role | Username | Default Password |
+| :--- | :--- | :--- |
+| **Admin** | `dev_admin` | `password123` *(or your set `DEV_SEED_PASSWORD`)* |
+| **Teacher** | `dev_teacher` | `password123` |
+| **Student** | `dev_student` | `password123` |
+| **Parent** | `dev_parent` | `password123` |
+
+---
+
+## 9. Automated Testing
+
+Run the test suite with `pytest`:
+
+```bash
+python -m pytest tests/test_analytics_engine.py tests/test_copilot_engine.py tests/test_staffing_engine.py
+```
+
+To run all integration tests (including Groq live tests if API key is configured):
+
+```bash
+python -m pytest
+```
+
+---
+
+## 10. Security & Safety
+
+- **Zero-Secret Commitment:** Never commit `.env` or API keys to version control (`.gitignore` excludes all credential files).
+- **Password Security:** Passwords are never stored in plaintext; all credentials use `bcrypt` password hashing with random salt.
+- **Role-Based Access Control:** All cross-domain record access is scoped in `auth.py` by role (`admin`, `teacher`, `student`, `parent`).
+- **Input Sanitization:** Multi-slot inputs are validated and sanitized through Pydantic schemas before writing to the database.
+
+---
+
+## 11. Project Status & Roadmap
+
+### ✅ Implemented Prototype Features
+- [x] Multi-slot document processing pipeline with Groq AI extraction.
+- [x] Human-in-the-loop document audit and review queue.
+- [x] Google OR-Tools CP-SAT constraint-based timetable scheduler and substitute solver.
+- [x] Real-time faculty absence toggle and automatic substitution matrix.
+- [x] 4-signal deterministic staffing pressure score and recommendation engine.
+- [x] Grounded natural-language query AI Copilot with offline fallback.
+- [x] Role-based authentication (Admin, Teacher, Student, Parent) with JWT and bcrypt.
+- [x] Live attendance marking and simulated fee ledger updates in Supabase.
+- [x] Comprehensive test suite with 112+ unit tests.
+
+### 🔮 Future Roadmap (Post-Hackathon)
+- [ ] Direct WhatsApp / SMS webhook notifications for parent alerts.
+- [ ] Mobile application built with React Native.
+- [ ] Multi-tenant school district support with partitioned organizational schemas.
+- [ ] Biometric hardware integration for physical attendance kiosk synchronization.
+
+---
+
+## 12. License
+
+This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
