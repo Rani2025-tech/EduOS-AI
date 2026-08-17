@@ -35,6 +35,16 @@ from auth import (
     ROLE_LABELS, ROLE_ICONS,
 )
 
+# ── Tab Navigation Constants ──────────────────────────────────────────────────
+TAB_DASHBOARD  = "📊 Persona Dashboard"
+TAB_DOCUMENTS  = "📄 AI Document Reader (Multi-Slot Forms)"
+TAB_TEACHERS   = "👩‍🏫 Teacher Availability & Roster"
+TAB_TIMETABLE  = "🗓️ Smart Timetable Engine (OR-Tools Solver)"
+TAB_DATA_LAYER = "🗄️ Unified Data Layer"
+TAB_ALERTS     = "🚨 Proactive Alerts Center"
+TAB_INSIGHTS   = "📈 Predictive Insights"
+TAB_COPILOT    = "🤖 AI Copilot (NLQ)"
+
 # ── 1. Page Configuration ─────────────────────────────────────────────────────
 st.set_page_config(
     page_title="EduOS AI — Autonomous School Operating System",
@@ -147,21 +157,28 @@ with st.sidebar:
 
     # Build the tab list based on what the current role can access
     _all_tabs = [
-        ("📊 Persona Dashboard",                        None),               # always visible
-        ("📄 AI Document Reader (Multi-Slot Forms)",    "documents:write"),  # admin only
-        ("👩\u200d🏫 Teacher Availability & Roster",       "teachers:write"),   # admin only
-        ("🗓️ Smart Timetable Engine (OR-Tools Solver)", "timetable:write"),  # admin only
-        ("🗄️ Unified Data Layer",                       "students:read_all"),# admin + teacher
-        ("🚨 Proactive Alerts Center",                  None),               # always visible (scoped)
-        ("📈 Predictive Insights",                      "analytics:read_all"),# admin only
-        ("🤖 AI Copilot (NLQ)",                         "copilot:use"),       # admin + teacher
+        (TAB_DASHBOARD,   None),                 # always visible
+        (TAB_DOCUMENTS,   "documents:write"),    # admin only
+        (TAB_TEACHERS,    "teachers:write"),     # admin only
+        (TAB_TIMETABLE,   "timetable:write"),    # admin only
+        (TAB_DATA_LAYER,  "students:read_all"),  # admin + teacher
+        (TAB_ALERTS,      None),                 # always visible (scoped)
+        (TAB_INSIGHTS,    "analytics:read_all"), # admin only
+        (TAB_COPILOT,     "copilot:use"),        # admin + teacher
     ]
     visible_tabs = [
         label for label, perm in _all_tabs
         if perm is None or has_permission(active_role, perm)
     ]
 
-    selected_tab = st.radio("Module:", visible_tabs)
+    # Handle programmatic navigation from session state (_nav)
+    nav_target = st.session_state.pop("_nav", None)
+    if nav_target and nav_target in visible_tabs:
+        st.session_state["nav_radio"] = nav_target
+    elif "nav_radio" not in st.session_state or st.session_state["nav_radio"] not in visible_tabs:
+        st.session_state["nav_radio"] = visible_tabs[0]
+
+    selected_tab = st.radio("Module:", visible_tabs, key="nav_radio")
 
     st.markdown("<hr style='border:none;border-top:1px solid #D9E2EC;margin:10px 0;'>", unsafe_allow_html=True)
     with st.expander("Database & AI Status"):
@@ -192,7 +209,7 @@ with st.sidebar:
 # ----------------------------------------------------
 # TAB 1: Persona Dashboard
 # ----------------------------------------------------
-if selected_tab == "📊 Persona Dashboard":
+if selected_tab == TAB_DASHBOARD:
 
     if active_role == "admin":
         students_list = visible_students
@@ -271,7 +288,8 @@ if selected_tab == "📊 Persona Dashboard":
                 att_level,
             )
             if st.button("View Attendance", key="op_att", use_container_width=True):
-                st.session_state["_nav"] = "📊 Persona Dashboard"
+                st.session_state["_nav"] = TAB_DATA_LAYER
+                st.rerun()
 
         with op2:
             tt_level = "LOW" if conflicts == 0 else ("MODERATE" if conflicts <= 2 else "HIGH")
@@ -283,7 +301,8 @@ if selected_tab == "📊 Persona Dashboard":
                 tt_level,
             )
             if st.button("View Timetable", key="op_tt", use_container_width=True):
-                st.session_state["_nav"] = "🗓️ Smart Timetable Engine (OR-Tools Solver)"
+                st.session_state["_nav"] = TAB_TIMETABLE
+                st.rerun()
 
         with op3:
             doc_level = "LOW" if pending_docs == 0 else ("MODERATE" if pending_docs <= 3 else "HIGH")
@@ -295,7 +314,8 @@ if selected_tab == "📊 Persona Dashboard":
                 doc_level,
             )
             if st.button("View Documents", key="op_doc", use_container_width=True):
-                st.session_state["_nav"] = "📄 AI Document Reader (Multi-Slot Forms)"
+                st.session_state["_nav"] = TAB_DOCUMENTS
+                st.rerun()
 
         with op4:
             teachers_list = st.session_state.teachers
@@ -309,7 +329,8 @@ if selected_tab == "📊 Persona Dashboard":
                 staff_level,
             )
             if st.button("View Staffing", key="op_staff", use_container_width=True):
-                st.session_state["_nav"] = "👩🏫 Teacher Availability & Roster"
+                st.session_state["_nav"] = TAB_TEACHERS
+                st.rerun()
 
         st.markdown("<div style='margin-top:8px;'></div>", unsafe_allow_html=True)
 
@@ -322,11 +343,13 @@ if selected_tab == "📊 Persona Dashboard":
                 for alt in unresolved:
                     render_alert_card(alt)
                     if st.button("Review", key=f"review_{alt.get('id', alt['title'])}", use_container_width=True):
-                        st.session_state["_nav"] = "🚨 Proactive Alerts Center"
+                        st.session_state["_nav"] = TAB_ALERTS
+                        st.rerun()
             else:
                 render_empty_state("No active alerts", "All systems are operating normally.", "")
                 if st.button("View Alert Center", key="view_alerts", use_container_width=True):
-                    st.session_state["_nav"] = "🚨 Proactive Alerts Center"
+                    st.session_state["_nav"] = TAB_ALERTS
+                    st.rerun()
 
         with right_col:
             render_section_header("AI Analytics Insights")
@@ -335,7 +358,8 @@ if selected_tab == "📊 Persona Dashboard":
                 for ins in live_insights[:3]:
                     render_insight_card(ins)
                 if st.button("View All Insights", key="view_insights", use_container_width=True):
-                    st.session_state["_nav"] = "📈 Predictive Insights"
+                    st.session_state["_nav"] = TAB_INSIGHTS
+                    st.rerun()
             else:
                 render_empty_state(
                     "No insights available",
@@ -349,17 +373,29 @@ if selected_tab == "📊 Persona Dashboard":
         render_section_header("Quick Actions", "Jump directly to key workflows.")
         qa1, qa2, qa3, qa4, qa5, qa6 = st.columns(6)
         with qa1:
-            st.button("Add Student", key="qa_student", type="primary", use_container_width=True)
+            if st.button("Add Student", key="qa_student", type="primary", use_container_width=True):
+                st.session_state["_nav"] = TAB_DATA_LAYER
+                st.rerun()
         with qa2:
-            st.button("Process Document", key="qa_doc", type="primary", use_container_width=True)
+            if st.button("Process Document", key="qa_doc", type="primary", use_container_width=True):
+                st.session_state["_nav"] = TAB_DOCUMENTS
+                st.rerun()
         with qa3:
-            st.button("Manage Teachers", key="qa_teacher", use_container_width=True)
+            if st.button("Manage Teachers", key="qa_teacher", use_container_width=True):
+                st.session_state["_nav"] = TAB_TEACHERS
+                st.rerun()
         with qa4:
-            st.button("Generate Timetable", key="qa_tt", use_container_width=True)
+            if st.button("Generate Timetable", key="qa_tt", use_container_width=True):
+                st.session_state["_nav"] = TAB_TIMETABLE
+                st.rerun()
         with qa5:
-            st.button("View Alerts", key="qa_alerts", use_container_width=True)
+            if st.button("View Alerts", key="qa_alerts", use_container_width=True):
+                st.session_state["_nav"] = TAB_ALERTS
+                st.rerun()
         with qa6:
-            st.button("Ask AI Copilot", key="qa_copilot", use_container_width=True)
+            if st.button("Ask AI Copilot", key="qa_copilot", use_container_width=True):
+                st.session_state["_nav"] = TAB_COPILOT
+                st.rerun()
 
     elif active_role == "teacher":
         render_page_header(
@@ -506,7 +542,7 @@ if selected_tab == "📊 Persona Dashboard":
 # ----------------------------------------------------
 # TAB 2: AI Document Reader (Multi-Slot Form Inputs)
 # ----------------------------------------------------
-elif selected_tab == "📄 AI Document Reader (Multi-Slot Forms)":
+elif selected_tab == TAB_DOCUMENTS:
     render_page_header(
         "AI Document Reader",
         "Upload admission forms, fee receipts, or paste raw text. OCR + Groq AI extracts structured JSON with full Pydantic validation & audit trail."
@@ -583,7 +619,7 @@ elif selected_tab == "📄 AI Document Reader (Multi-Slot Forms)":
 # ----------------------------------------------------
 # TAB 3: Teacher Availability & Roster Manager (NEW)
 # ----------------------------------------------------
-elif selected_tab == "👩‍🏫 Teacher Availability & Roster":
+elif selected_tab == TAB_TEACHERS:
     render_page_header(
         "Teacher Availability & Roster",
         "Upload teacher roster files or paste custom availability instructions. Groq AI parses roster & constraints, then OR-Tools solver re-assigns schedules."
@@ -637,7 +673,7 @@ elif selected_tab == "👩‍🏫 Teacher Availability & Roster":
 # ----------------------------------------------------
 # TAB 4: Smart Timetable Engine (OR-Tools Solver)
 # ----------------------------------------------------
-elif selected_tab == "🗓️ Smart Timetable Engine (OR-Tools Solver)":
+elif selected_tab == TAB_TIMETABLE:
     render_page_header(
         "Smart Timetable Engine",
         "Upload timetable schedules via Picture, File, or Raw Text. Groq AI extracts slot constraints → Pydantic validates → Google OR-Tools solves conflicts → Supabase stores result."
@@ -709,7 +745,7 @@ elif selected_tab == "🗓️ Smart Timetable Engine (OR-Tools Solver)":
 # ----------------------------------------------------
 # TAB 5: Unified Data Layer
 # ----------------------------------------------------
-elif selected_tab == "🗄️ Unified Data Layer":
+elif selected_tab == TAB_DATA_LAYER:
     render_page_header(
         "Unified Data Layer",
         "Single source of truth in Supabase joining Student ID ↔ Attendance ↔ Fees ↔ Schedule."
@@ -725,7 +761,7 @@ elif selected_tab == "🗄️ Unified Data Layer":
 # ----------------------------------------------------
 # TAB 6: Proactive Alerts Center
 # ----------------------------------------------------
-elif selected_tab == "🚨 Proactive Alerts Center":
+elif selected_tab == TAB_ALERTS:
     render_page_header(
         "Proactive Alerts Center",
         "Rule-based monitoring across attendance, fees, timetable, and staffing. Alerts are routed by role."
@@ -740,7 +776,7 @@ elif selected_tab == "🚨 Proactive Alerts Center":
 # ----------------------------------------------------
 # TAB 7: Predictive Insights Engine
 # ----------------------------------------------------
-elif selected_tab == "📈 Predictive Insights":
+elif selected_tab == TAB_INSIGHTS:
     render_page_header(
         "Predictive Insights",
         "Real-time calculations over live school data. Works with or without Supabase. Click Recalculate after any data change."
@@ -851,7 +887,7 @@ elif selected_tab == "📈 Predictive Insights":
 # ----------------------------------------------------
 # TAB 8: AI Copilot (NLQ) — Grounded Intelligence Layer
 # ----------------------------------------------------
-elif selected_tab == "🤖 AI Copilot (NLQ)":
+elif selected_tab == TAB_COPILOT:
     render_page_header(
         "AI Copilot",
         "Grounded natural-language interface over live school data. All numerical answers come from the Analytics & Staffing engines — the LLM only explains them."
