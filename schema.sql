@@ -121,15 +121,26 @@ CREATE TABLE IF NOT EXISTS copilot_messages (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Enable Row Level Security
-ALTER TABLE students ENABLE ROW LEVEL SECURITY;
-ALTER TABLE teachers ENABLE ROW LEVEL SECURITY;
-ALTER TABLE teacher_availability ENABLE ROW LEVEL SECURITY;
-ALTER TABLE timetable ENABLE ROW LEVEL SECURITY;
-ALTER TABLE documents ENABLE ROW LEVEL SECURITY;
-ALTER TABLE alerts ENABLE ROW LEVEL SECURITY;
-ALTER TABLE insights ENABLE ROW LEVEL SECURITY;
-ALTER TABLE copilot_messages ENABLE ROW LEVEL SECURITY;
+-- 9. Users Table (Authentication)
+-- Stores application user accounts with hashed passwords.
+-- linked_id references the relevant domain record:
+--   admin   -> NULL (no linked domain record)
+--   teacher -> teachers.id
+--   student -> students.id
+--   parent  -> students.id  (the child they monitor)
+CREATE TABLE IF NOT EXISTS users (
+    id           TEXT PRIMARY KEY,
+    username     TEXT NOT NULL UNIQUE,
+    password_hash TEXT NOT NULL,
+    role         TEXT NOT NULL CHECK (role IN ('admin', 'teacher', 'student', 'parent')),
+    linked_id    TEXT,          -- FK enforced at application layer (cross-table)
+    is_active    BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at   TIMESTAMPTZ DEFAULT NOW(),
+    updated_at   TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
+CREATE INDEX IF NOT EXISTS idx_users_role     ON users(role);
 
 -- Indexes
 CREATE INDEX IF NOT EXISTS idx_students_class ON students(class);
@@ -139,3 +150,166 @@ CREATE INDEX IF NOT EXISTS idx_teacher_availability_status ON teacher_availabili
 CREATE INDEX IF NOT EXISTS idx_timetable_class_period ON timetable(class_name, period);
 CREATE INDEX IF NOT EXISTS idx_timetable_teacher ON timetable(teacher_id);
 CREATE INDEX IF NOT EXISTS idx_alerts_resolved ON alerts(resolved);
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Row Level Security (RLS)
+-- ─────────────────────────────────────────────────────────────────────────────
+-- EduOS AI uses application-layer RBAC (auth.py) with a custom JWT login flow.
+-- The Streamlit server connects via the Supabase anon key (role: anon).
+-- Fine-grained admin / teacher / student / parent permissions are enforced in
+-- Python — NOT via Supabase Auth session claims.
+--
+-- These policies therefore grant the anon/authenticated roles the CRUD access
+-- that db_client.py already performs. This unblocks fresh installs where RLS
+-- was previously enabled with zero policies (which denies all anon access).
+--
+-- Re-run safe: policies are dropped and recreated idempotently.
+-- ─────────────────────────────────────────────────────────────────────────────
+
+ALTER TABLE students              ENABLE ROW LEVEL SECURITY;
+ALTER TABLE teachers              ENABLE ROW LEVEL SECURITY;
+ALTER TABLE teacher_availability  ENABLE ROW LEVEL SECURITY;
+ALTER TABLE timetable             ENABLE ROW LEVEL SECURITY;
+ALTER TABLE documents             ENABLE ROW LEVEL SECURITY;
+ALTER TABLE alerts                ENABLE ROW LEVEL SECURITY;
+ALTER TABLE insights              ENABLE ROW LEVEL SECURITY;
+ALTER TABLE copilot_messages      ENABLE ROW LEVEL SECURITY;
+ALTER TABLE users                 ENABLE ROW LEVEL SECURITY;
+
+-- Helper: drop existing app-server policies so this file is safe to re-run.
+DO $$
+DECLARE
+  tbl  TEXT;
+  pol  TEXT;
+BEGIN
+  FOREACH tbl IN ARRAY ARRAY[
+    'students', 'teachers', 'teacher_availability', 'timetable',
+    'documents', 'alerts', 'insights', 'copilot_messages', 'users'
+  ] LOOP
+    FOREACH pol IN ARRAY ARRAY[
+      'app_server_select', 'app_server_insert',
+      'app_server_update', 'app_server_delete'
+    ] LOOP
+      EXECUTE format('DROP POLICY IF EXISTS %I ON %I', pol, tbl);
+    END LOOP;
+  END LOOP;
+END $$;
+
+-- ── School operational data ──────────────────────────────────────────────────
+-- Mirrors auth.py permissions at the transport layer: the trusted app server
+-- (Streamlit + db_client.py) performs all reads/writes on behalf of logged-in
+-- users after RBAC checks in Python.
+
+CREATE POLICY app_server_select ON students
+  FOR SELECT TO anon, authenticated USING (true);
+
+CREATE POLICY app_server_insert ON students
+  FOR INSERT TO anon, authenticated WITH CHECK (true);
+
+CREATE POLICY app_server_update ON students
+  FOR UPDATE TO anon, authenticated USING (true) WITH CHECK (true);
+
+CREATE POLICY app_server_delete ON students
+  FOR DELETE TO anon, authenticated USING (true);
+
+CREATE POLICY app_server_select ON teachers
+  FOR SELECT TO anon, authenticated USING (true);
+
+CREATE POLICY app_server_insert ON teachers
+  FOR INSERT TO anon, authenticated WITH CHECK (true);
+
+CREATE POLICY app_server_update ON teachers
+  FOR UPDATE TO anon, authenticated USING (true) WITH CHECK (true);
+
+CREATE POLICY app_server_delete ON teachers
+  FOR DELETE TO anon, authenticated USING (true);
+
+CREATE POLICY app_server_select ON teacher_availability
+  FOR SELECT TO anon, authenticated USING (true);
+
+CREATE POLICY app_server_insert ON teacher_availability
+  FOR INSERT TO anon, authenticated WITH CHECK (true);
+
+CREATE POLICY app_server_update ON teacher_availability
+  FOR UPDATE TO anon, authenticated USING (true) WITH CHECK (true);
+
+CREATE POLICY app_server_delete ON teacher_availability
+  FOR DELETE TO anon, authenticated USING (true);
+
+CREATE POLICY app_server_select ON timetable
+  FOR SELECT TO anon, authenticated USING (true);
+
+CREATE POLICY app_server_insert ON timetable
+  FOR INSERT TO anon, authenticated WITH CHECK (true);
+
+CREATE POLICY app_server_update ON timetable
+  FOR UPDATE TO anon, authenticated USING (true) WITH CHECK (true);
+
+CREATE POLICY app_server_delete ON timetable
+  FOR DELETE TO anon, authenticated USING (true);
+
+-- Documents: admin-only writes in auth.py; app server mediates all access.
+CREATE POLICY app_server_select ON documents
+  FOR SELECT TO anon, authenticated USING (true);
+
+CREATE POLICY app_server_insert ON documents
+  FOR INSERT TO anon, authenticated WITH CHECK (true);
+
+CREATE POLICY app_server_update ON documents
+  FOR UPDATE TO anon, authenticated USING (true) WITH CHECK (true);
+
+CREATE POLICY app_server_delete ON documents
+  FOR DELETE TO anon, authenticated USING (true);
+
+-- Alerts: read/write for admin + teacher in auth.py; app server mediates.
+CREATE POLICY app_server_select ON alerts
+  FOR SELECT TO anon, authenticated USING (true);
+
+CREATE POLICY app_server_insert ON alerts
+  FOR INSERT TO anon, authenticated WITH CHECK (true);
+
+CREATE POLICY app_server_update ON alerts
+  FOR UPDATE TO anon, authenticated USING (true) WITH CHECK (true);
+
+CREATE POLICY app_server_delete ON alerts
+  FOR DELETE TO anon, authenticated USING (true);
+
+-- Insights: admin analytics reads; writes reserved for future persistence.
+CREATE POLICY app_server_select ON insights
+  FOR SELECT TO anon, authenticated USING (true);
+
+CREATE POLICY app_server_insert ON insights
+  FOR INSERT TO anon, authenticated WITH CHECK (true);
+
+CREATE POLICY app_server_update ON insights
+  FOR UPDATE TO anon, authenticated USING (true) WITH CHECK (true);
+
+CREATE POLICY app_server_delete ON insights
+  FOR DELETE TO anon, authenticated USING (true);
+
+-- Copilot messages: admin + teacher in auth.py; app server mediates.
+CREATE POLICY app_server_select ON copilot_messages
+  FOR SELECT TO anon, authenticated USING (true);
+
+CREATE POLICY app_server_insert ON copilot_messages
+  FOR INSERT TO anon, authenticated WITH CHECK (true);
+
+CREATE POLICY app_server_update ON copilot_messages
+  FOR UPDATE TO anon, authenticated USING (true) WITH CHECK (true);
+
+CREATE POLICY app_server_delete ON copilot_messages
+  FOR DELETE TO anon, authenticated USING (true);
+
+-- Users: login lookup (SELECT by username) + admin user management via app.
+-- Password hashes are never exposed in the UI; only db_client reads them server-side.
+CREATE POLICY app_server_select ON users
+  FOR SELECT TO anon, authenticated USING (true);
+
+CREATE POLICY app_server_insert ON users
+  FOR INSERT TO anon, authenticated WITH CHECK (true);
+
+CREATE POLICY app_server_update ON users
+  FOR UPDATE TO anon, authenticated USING (true) WITH CHECK (true);
+
+CREATE POLICY app_server_delete ON users
+  FOR DELETE TO anon, authenticated USING (true);

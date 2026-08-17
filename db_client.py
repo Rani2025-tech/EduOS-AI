@@ -4,6 +4,8 @@ from typing import List, Dict, Any, Optional
 from dotenv import load_dotenv
 from supabase import create_client, Client
 
+from env_config import get_missing_vars, validate_supabase_url
+
 load_dotenv()
 
 logger = logging.getLogger("EduOS_DatabaseClient")
@@ -23,29 +25,50 @@ class DatabaseClient:
         self.supabase: Optional[Client] = None
         self.is_supabase_active = False
         self.connection_status = DB_STATUS_MISSING_CONFIG
+        self.config_errors: List[str] = []
 
-        if not self.supabase_url or not self.supabase_key:
+        missing = get_missing_vars(for_db=True)
+        if missing:
+            self.config_errors = missing
             logger.warning(
-                "Supabase credentials not found. "
+                "Supabase credentials not found. Missing: %s. "
                 "Set SUPABASE_URL and SUPABASE_KEY in your .env file. "
-                "Copy .env.example to .env to get started."
+                "Copy .env.example to .env to get started.",
+                ", ".join(missing),
             )
         else:
-            self._connect_supabase(self.supabase_url, self.supabase_key)
+            url_error = validate_supabase_url(self.supabase_url)
+            if url_error:
+                self.config_errors = [url_error]
+                logger.error(url_error)
+                self.connection_status = DB_STATUS_CONN_FAILED
+            else:
+                self._connect_supabase(self.supabase_url, self.supabase_key)
 
     def _connect_supabase(self, url: str, key: str) -> bool:
+        url_error = validate_supabase_url(url)
+        if url_error:
+            logger.error(url_error)
+            self.is_supabase_active = False
+            self.connection_status = DB_STATUS_CONN_FAILED
+            self.config_errors = [url_error]
+            return False
         try:
             self.supabase_url = url
             self.supabase_key = key
             self.supabase = create_client(url, key)
+            # Live probe: a lightweight SELECT to confirm credentials are valid
+            self.supabase.table("students").select("id").limit(1).execute()
             self.is_supabase_active = True
             self.connection_status = DB_STATUS_CONNECTED
+            self.config_errors = []
             logger.info("Supabase PostgreSQL client connected successfully.")
             return True
         except Exception as e:
-            logger.error(f"Supabase connection error: {e}")
+            logger.error("Supabase connection error: %s", e)
             self.is_supabase_active = False
             self.connection_status = DB_STATUS_CONN_FAILED
+            self.config_errors = ["Connection probe failed — check URL, key, and RLS policies."]
             return False
 
     def set_supabase_credentials(self, url: str, key: str) -> bool:
@@ -275,5 +298,90 @@ class DatabaseClient:
         except Exception as e:
             logger.error(f"Error inserting copilot message: {e}")
             return msg_data
+
+    # ----------------------------------------------------
+    # 9. Users CRUD (Authentication)
+    # ----------------------------------------------------
+    def get_user_by_username(self, username: str) -> Optional[Dict[str, Any]]:
+        """Fetches a single user record by username. Returns None if not found."""
+        if not self.is_supabase_active or not self.supabase:
+            return None
+        try:
+            res = (
+                self.supabase.table("users")
+                .select("*")
+                .eq("username", username)
+                .eq("is_active", True)
+                .limit(1)
+                .execute()
+            )
+            return res.data[0] if res.data else None
+        except Exception as e:
+            logger.error(f"Error fetching user by username: {e}")
+            return None
+
+    def get_user_by_id(self, user_id: str) -> Optional[Dict[str, Any]]:
+        """Fetches a single user record by ID. Returns None if not found."""
+        if not self.is_supabase_active or not self.supabase:
+            return None
+        try:
+            res = (
+                self.supabase.table("users")
+                .select("*")
+                .eq("id", user_id)
+                .limit(1)
+                .execute()
+            )
+            return res.data[0] if res.data else None
+        except Exception as e:
+            logger.error(f"Error fetching user by ID: {e}")
+            return None
+
+    def create_user(self, user_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """
+        Inserts a new user record. Expects password_hash (never plaintext).
+        Returns the created record or None on failure.
+        """
+        if not self.is_supabase_active or not self.supabase:
+            logger.warning("create_user skipped: Supabase not connected.")
+            return None
+        if "password" in user_data:
+            logger.error("create_user called with plaintext 'password' key — rejected.")
+            return None
+        try:
+            res = self.supabase.table("users").insert(user_data).execute()
+            logger.info(f"Created user in Supabase: ID={user_data.get('id')}, role={user_data.get('role')}")
+            return res.data[0] if res.data else None
+        except Exception as e:
+            logger.error(f"Error creating user: {e}")
+            return None
+
+    def list_users(self) -> List[Dict[str, Any]]:
+        """Returns all users (id, username, role, linked_id, is_active). Never returns password_hash."""
+        if not self.is_supabase_active or not self.supabase:
+            return []
+        try:
+            res = (
+                self.supabase.table("users")
+                .select("id, username, role, linked_id, is_active, created_at")
+                .order("created_at")
+                .execute()
+            )
+            return res.data or []
+        except Exception as e:
+            logger.error(f"Error listing users: {e}")
+            return []
+
+    def deactivate_user(self, user_id: str) -> bool:
+        """Soft-deletes a user by setting is_active=False."""
+        if not self.is_supabase_active or not self.supabase:
+            return False
+        try:
+            self.supabase.table("users").update({"is_active": False}).eq("id", user_id).execute()
+            logger.info(f"Deactivated user: ID={user_id}")
+            return True
+        except Exception as e:
+            logger.error(f"Error deactivating user: {e}")
+            return False
 
 db_instance = DatabaseClient()

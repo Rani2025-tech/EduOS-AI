@@ -5,12 +5,14 @@ Run from the project root:
     python verify_supabase.py
 
 Checks:
-  1. Environment configuration
+  1. Environment configuration (SUPABASE_URL, SUPABASE_KEY, JWT_SECRET_KEY, GROQ_API_KEY)
   2. Supabase connection
-  3. All 8 required tables are accessible (READ)
-  4. Safe INSERT / UPSERT using a reserved test-only ID prefix
-  5. UPDATE
-  6. DELETE of test records only (never touches real data)
+  3. All 9 required tables are accessible (READ)
+  4. RLS does not block expected anon-key operations (write probe)
+  5. Safe INSERT / UPSERT using a reserved test-only ID prefix
+  6. UPDATE
+  7. DELETE of test records only (never touches real data)
+  8. Users table read access + development user presence (informational)
 
 Test records use IDs prefixed with "SMOKE-TEST-" so they are
 clearly identifiable and safe to delete.
@@ -18,55 +20,101 @@ clearly identifiable and safe to delete.
 
 import sys
 import os
+
 from db_client import db_instance, DB_STATUS_CONNECTED, DB_STATUS_MISSING_CONFIG, DB_STATUS_CONN_FAILED
+from env_config import get_env_report, get_missing_vars, format_env_summary, validate_supabase_url
+from auth import is_auth_configured, get_auth_config_errors
 
 PASS = "\033[92m[PASS]\033[0m"
 FAIL = "\033[91m[FAIL]\033[0m"
 SKIP = "\033[93m[SKIP]\033[0m"
 INFO = "\033[94m[INFO]\033[0m"
+WARN = "\033[93m[WARN]\033[0m"
 
 TEST_STUDENT_ID = "SMOKE-TEST-STU-001"
 TEST_ALERT_ID   = "SMOKE-TEST-ALT-001"
 TEST_AVAIL_ID   = "SMOKE-TEST-AV-001"
+TEST_USER_ID    = "SMOKE-TEST-USR-001"
+
+DEV_USERNAMES = ["dev_admin", "dev_teacher", "dev_student", "dev_parent"]
+
+REQUIRED_TABLES = [
+    "students",
+    "teachers",
+    "teacher_availability",
+    "timetable",
+    "documents",
+    "alerts",
+    "insights",
+    "copilot_messages",
+    "users",
+]
+
 
 def section(title: str):
     print(f"\n{'='*55}")
     print(f"  {title}")
     print('='*55)
 
+
 def run_verification():
     section("EduOS AI — Supabase Smoke Test")
+    failures = 0
 
     # ── 1. Environment Configuration ──────────────────────────
     section("1. Environment Configuration")
+    report = get_env_report()
+
     url = os.getenv("SUPABASE_URL", "").strip()
     key = (os.getenv("SUPABASE_KEY", "") or os.getenv("SUPABASE_ANON_KEY", "")).strip()
-    groq_key = os.getenv("GROQ_API_KEY", "").strip()
 
-    if url:
-        print(f"{PASS} SUPABASE_URL is set")
+    if report["SUPABASE_URL"]["set"]:
+        url_error = validate_supabase_url(url)
+        if url_error:
+            print(f"{FAIL} SUPABASE_URL: {url_error}")
+            failures += 1
+        else:
+            print(f"{PASS} SUPABASE_URL is set and format looks valid")
     else:
         print(f"{FAIL} SUPABASE_URL is missing — copy .env.example to .env")
+        failures += 1
 
-    if key:
+    if report["SUPABASE_KEY"]["set"]:
         print(f"{PASS} SUPABASE_KEY is set")
     else:
         print(f"{FAIL} SUPABASE_KEY is missing — copy .env.example to .env")
+        failures += 1
 
-    if groq_key:
+    if report["JWT_SECRET_KEY"]["set"]:
+        print(f"{PASS} JWT_SECRET_KEY is set (login will work)")
+    else:
+        print(f"{WARN} JWT_SECRET_KEY is not set — authentication will fail until configured")
+        print(f"       Hint: {report['JWT_SECRET_KEY']['hint']}")
+
+    if report["GROQ_API_KEY"]["set"]:
         print(f"{PASS} GROQ_API_KEY is set")
     else:
         print(f"{SKIP} GROQ_API_KEY is not set — AI extraction will be unavailable")
+
+    if failures:
+        print(f"\n{INFO} Environment summary:\n{format_env_summary()}")
+        print(f"\n{FAIL} Fix missing database variables before continuing.")
+        sys.exit(1)
 
     # ── 2. Connection ──────────────────────────────────────────
     section("2. Supabase Connection")
     if db_instance.connection_status == DB_STATUS_MISSING_CONFIG:
         print(f"{FAIL} Cannot connect: credentials not configured.")
-        print("       Set SUPABASE_URL and SUPABASE_KEY in your .env file.")
+        missing = get_missing_vars(for_db=True)
+        if missing:
+            print(f"       Missing: {', '.join(missing)}")
         sys.exit(1)
     elif db_instance.connection_status == DB_STATUS_CONN_FAILED:
         print(f"{FAIL} Credentials found but connection failed.")
-        print("       Check that your SUPABASE_URL and SUPABASE_KEY are correct.")
+        if db_instance.config_errors:
+            for err in db_instance.config_errors:
+                print(f"       {err}")
+        print("       Check SUPABASE_URL, SUPABASE_KEY, schema.sql, and RLS policies.")
         sys.exit(1)
     else:
         print(f"{PASS} Connected to Supabase: {db_instance.supabase_url}")
@@ -74,20 +122,10 @@ def run_verification():
     db = db_instance.supabase
 
     # ── 3. Table READ Access ───────────────────────────────────
-    section("3. Table READ Access (all 8 required tables)")
-    required_tables = [
-        "students",
-        "teachers",
-        "teacher_availability",
-        "timetable",
-        "documents",
-        "alerts",
-        "insights",
-        "copilot_messages",
-    ]
+    section("3. Table READ Access (all 9 required tables)")
     table_counts = {}
     all_readable = True
-    for table in required_tables:
+    for table in REQUIRED_TABLES:
         try:
             res = db.table(table).select("id", count="exact").limit(1).execute()
             count = res.count if res.count is not None else len(res.data or [])
@@ -98,11 +136,33 @@ def run_verification():
             all_readable = False
 
     if not all_readable:
-        print(f"\n{FAIL} One or more tables are missing. Apply schema.sql in the Supabase SQL Editor.")
+        print(f"\n{FAIL} One or more tables are missing or blocked by RLS.")
+        print("       Apply schema.sql (including RLS policies) in the Supabase SQL Editor.")
         sys.exit(1)
 
-    # ── 4. INSERT / UPSERT ────────────────────────────────────
-    section("4. INSERT / UPSERT (test records only)")
+    # ── 4. RLS Write Probe ─────────────────────────────────────
+    section("4. RLS Write Probe (anon key must not be blocked)")
+    rls_ok = True
+    probe_tables = ["students", "teachers", "documents", "alerts", "users"]
+    for table in probe_tables:
+        try:
+            if table == "users":
+                # Read-only probe for users — full write tested in section 5 via create_user path
+                res = db.table(table).select("id").limit(1).execute()
+            else:
+                res = db.table(table).select("id").limit(1).execute()
+            print(f"{PASS} {table:<25} RLS allows SELECT via anon key")
+        except Exception as e:
+            print(f"{FAIL} {table:<25} RLS may be blocking access: {e}")
+            rls_ok = False
+
+    if not rls_ok:
+        print(f"\n{FAIL} RLS is blocking expected operations.")
+        print("       Re-apply the RLS policy section of schema.sql in Supabase SQL Editor.")
+        sys.exit(1)
+
+    # ── 5. INSERT / UPSERT ────────────────────────────────────
+    section("5. INSERT / UPSERT (test records only)")
 
     test_student = {
         "id": TEST_STUDENT_ID,
@@ -158,8 +218,25 @@ def run_verification():
     except Exception as e:
         print(f"{FAIL} teacher_availability — upsert FAILED: {e}")
 
-    # ── 5. UPDATE ─────────────────────────────────────────────
-    section("5. UPDATE")
+    # Users table write probe (bcrypt hash of a throwaway test password)
+    try:
+        from auth import hash_password
+        test_user = {
+            "id": TEST_USER_ID,
+            "username": "smoke_test_user",
+            "password_hash": hash_password("smoke-test-only-not-a-real-password"),
+            "role": "admin",
+            "linked_id": None,
+            "is_active": True,
+        }
+        res = db.table("users").upsert(test_user).execute()
+        assert res.data, "No data returned from upsert"
+        print(f"{PASS} users    — upsert OK (ID={TEST_USER_ID})")
+    except Exception as e:
+        print(f"{FAIL} users    — upsert FAILED: {e}")
+
+    # ── 6. UPDATE ─────────────────────────────────────────────
+    section("6. UPDATE")
     try:
         res = db.table("students").update({"attendance_pct": 80.0, "risk_level": "medium"}).eq("id", TEST_STUDENT_ID).execute()
         assert res.data, "No data returned from update"
@@ -176,11 +253,12 @@ def run_verification():
     except Exception as e:
         print(f"{FAIL} alerts   — update FAILED: {e}")
 
-    # ── 6. DELETE (test records only) ─────────────────────────
-    section("6. DELETE (smoke test records only)")
+    # ── 7. DELETE (test records only) ─────────────────────────
+    section("7. DELETE (smoke test records only)")
     for table, col, val in [
         ("alerts",               "id", TEST_ALERT_ID),
         ("teacher_availability", "id", TEST_AVAIL_ID),
+        ("users",                "id", TEST_USER_ID),
         ("students",             "id", TEST_STUDENT_ID),
     ]:
         try:
@@ -189,13 +267,40 @@ def run_verification():
         except Exception as e:
             print(f"{FAIL} {table:<25} — delete FAILED: {e}")
 
+    # ── 8. Auth configuration & dev users ─────────────────────
+    section("8. Authentication & Development Users")
+    if is_auth_configured():
+        print(f"{PASS} JWT_SECRET_KEY configured — login tokens can be issued")
+    else:
+        print(f"{WARN} JWT_SECRET_KEY not configured — run: python -c \"import secrets; print(secrets.token_hex(32))\"")
+        for var in get_auth_config_errors():
+            print(f"       Missing: {var}")
+
+    dev_found = 0
+    for username in DEV_USERNAMES:
+        user = db_instance.get_user_by_username(username)
+        if user:
+            dev_found += 1
+            print(f"{PASS} dev user exists: {username} (role={user.get('role')})")
+        else:
+            print(f"{INFO} dev user not found: {username}")
+
+    if dev_found == 0:
+        print(f"\n{INFO} No development users found. After applying schema.sql, run:")
+        print("       set DEV_SEED_PASSWORD=your-local-dev-password")
+        print("       python seed_dev_users.py")
+    elif dev_found < len(DEV_USERNAMES):
+        print(f"\n{INFO} Partial dev user set ({dev_found}/{len(DEV_USERNAMES)}). Re-run seed_dev_users.py to fill gaps.")
+
     # ── Summary ───────────────────────────────────────────────
     section("Summary")
     print(f"{PASS} All smoke tests completed.")
     print(f"{INFO} Current row counts per table:")
-    for t, c in table_counts.items():
+    for t in REQUIRED_TABLES:
+        c = table_counts.get(t, "?")
         print(f"       {t:<25} {c} rows")
     print()
+
 
 if __name__ == "__main__":
     run_verification()

@@ -1,26 +1,41 @@
 import streamlit as st
 import pandas as pd
 import datetime
+from ui_components import (
+    inject_global_styles, render_page_header, render_section_header,
+    render_kpi_card, render_status_badge, render_health_card,
+    render_alert_card, render_insight_card, render_empty_state,
+    render_db_status_bar, render_staffing_banner, render_recommendation_item,
+    render_copilot_prompt_card, C,
+)
 from data_store import (
-    init_session_state, 
-    toggle_teacher, 
-    solve_timetable_reassignment, 
-    mark_attendance, 
-    pay_fee, 
+    init_session_state,
+    init_auth_session,
+    login_user,
+    logout_user,
+    is_authenticated,
+    toggle_teacher,
+    solve_timetable_reassignment,
+    mark_attendance,
+    pay_fee,
     commit_doc,
     refresh_from_db,
     process_and_save_document_input,
     process_and_save_teacher_input,
     process_and_save_timetable_input,
-    add_copilot_message
+    add_copilot_message,
 )
 from copilot_engine import answer_question, classify_intent
 from groq_client import groq_client
 from db_client import db_instance, DB_STATUS_CONNECTED, DB_STATUS_MISSING_CONFIG, DB_STATUS_CONN_FAILED
 from analytics_engine import generate_all_insights
 from staffing_engine import calculate_staffing_report
+from auth import (
+    has_permission, scope_students, scope_alerts, scope_timetable,
+    ROLE_LABELS, ROLE_ICONS,
+)
 
-# 1. Page Configuration
+# ── 1. Page Configuration ─────────────────────────────────────────────────────
 st.set_page_config(
     page_title="EduOS AI — Autonomous School Operating System",
     page_icon="⚡",
@@ -28,165 +43,128 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Initialize Session State Data & DB
-init_session_state()
+# ── 2. Bootstrap auth + CSS ───────────────────────────────────────────────────
+init_auth_session()
+inject_global_styles()
 
-# 2. Premium Custom CSS Styling Injection
-st.markdown("""
-<style>
-    /* Dark Theme Core */
-    .stApp {
-        background-color: #090d16;
-        color: #f8fafc;
-        font-family: 'Plus Jakarta Sans', sans-serif;
-    }
+# ── 3. Login gate ────────────────────────────────────────────────────────────
+if not is_authenticated():
+    st.markdown("""
+        <div style="max-width:420px;margin:80px auto 0;">
+            <div style="text-align:center;margin-bottom:32px;">
+                <div style="font-size:2rem;font-weight:800;color:#17365D;">
+                    EduOS <span style="color:#2563EB;">AI</span>
+                </div>
+                <div style="font-size:0.85rem;color:#5B6B7F;margin-top:4px;">
+                    School Operations Platform
+                </div>
+            </div>
+        </div>
+    """, unsafe_allow_html=True)
 
-    /* Sidebar Styling */
-    section[data-testid="stSidebar"] {
-        background-color: #0f172a;
-        border-right: 1px solid rgba(255, 255, 255, 0.08);
-    }
+    with st.form("login_form", clear_on_submit=False):
+        st.markdown("#### Sign in to your account")
+        username_input = st.text_input("Username", placeholder="Enter your username")
+        password_input = st.text_input("Password", type="password", placeholder="Enter your password")
+        submitted = st.form_submit_button("Sign In", type="primary", use_container_width=True)
 
-    /* Glassmorphism Cards */
-    .glass-card {
-        background: rgba(19, 27, 46, 0.75);
-        backdrop-filter: blur(12px);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 16px;
-        padding: 24px;
-        margin-bottom: 16px;
-    }
+        if submitted:
+            if login_user(username_input, password_input):
+                init_session_state()
+                st.rerun()
+            else:
+                st.error(st.session_state.get("auth_error", "Login failed."))
 
-    /* Metric Cards */
-    div[data-testid="stMetricValue"] {
-        font-size: 2rem !important;
-        font-weight: 800 !important;
-        color: #818cf8 !important;
-    }
+    if not db_instance.is_supabase_active:
+        st.warning(
+            "Supabase is not connected. Fix your `.env` configuration before logging in.",
+            icon="⚠️",
+        )
+    st.stop()
 
-    /* Gradient Header */
-    .gradient-header {
-        background: linear-gradient(135deg, #a5b4fc 0%, #6366f1 50%, #38bdf8 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        font-weight: 800;
-    }
+# ── Authenticated from here down ─────────────────────────────────────────────────
+auth        = st.session_state.auth
+active_role = auth["role"]          # admin | teacher | student | parent
+linked_id   = auth.get("linked_id") # student_id / teacher_id or None
 
-    /* Custom Badges */
-    .badge-indigo {
-        background: rgba(99, 102, 241, 0.2);
-        color: #818cf8;
-        border: 1px solid rgba(99, 102, 241, 0.4);
-        padding: 4px 10px;
-        border-radius: 20px;
-        font-size: 0.75rem;
-        font-weight: 700;
-    }
-    .badge-emerald {
-        background: rgba(16, 185, 129, 0.2);
-        color: #34d399;
-        border: 1px solid rgba(16, 185, 129, 0.4);
-        padding: 4px 10px;
-        border-radius: 20px;
-        font-size: 0.75rem;
-        font-weight: 700;
-    }
-    .badge-rose {
-        background: rgba(244, 63, 94, 0.2);
-        color: #f87171;
-        border: 1px solid rgba(244, 63, 94, 0.4);
-        padding: 4px 10px;
-        border-radius: 20px;
-        font-size: 0.75rem;
-        font-weight: 700;
-    }
-    .badge-amber {
-        background: rgba(245, 158, 11, 0.2);
-        color: #fbbf24;
-        border: 1px solid rgba(245, 158, 11, 0.4);
-        padding: 4px 10px;
-        border-radius: 20px;
-        font-size: 0.75rem;
-        font-weight: 700;
-    }
+# Scope data to what this role is allowed to see
+visible_students  = scope_students(st.session_state.get("students", []),  active_role, linked_id)
+visible_alerts    = scope_alerts(st.session_state.get("alerts", []),      active_role, linked_id)
+visible_timetable = scope_timetable(
+    st.session_state.get("timetable", []), active_role, linked_id,
+    st.session_state.get("students", [])
+)
 
-    /* Buttons */
-    .stButton>button {
-        border-radius: 10px;
-        font-weight: 600;
-        transition: all 0.2s ease;
-    }
-</style>
-""", unsafe_allow_html=True)
-
-# 3. Top Header & Database Connection Status
-unresolved_count = len([a for a in st.session_state.alerts if not a.get("resolved")])
-if db_instance.connection_status == DB_STATUS_CONNECTED:
-    db_status_text = "⚡ Supabase Postgres Active"
-    db_badge_class = "badge-emerald"
-elif db_instance.connection_status == DB_STATUS_MISSING_CONFIG:
-    db_status_text = "⚙️ DB Config Missing"
-    db_badge_class = "badge-amber"
-else:
-    db_status_text = "🔴 DB Connection Failed"
-    db_badge_class = "badge-rose"
+# ── 4. Top header ───────────────────────────────────────────────────────────
+unresolved_count = len([a for a in visible_alerts if not a.get("resolved")])
 
 col_header, col_status = st.columns([3, 1])
 with col_header:
     st.markdown("""
-        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
-            <h1 style="margin: 0; font-weight: 800; font-size: 2.2rem;">
-                EduOS <span class="gradient-header">AI</span>
-            </h1>
-            <span class="badge-indigo">Autonomous School Operating System</span>
+        <div style="padding: 8px 0 4px;">
+            <div style="font-size:1.5rem;font-weight:800;color:#17365D;letter-spacing:-0.02em;line-height:1.2;">
+                EduOS <span style="color:#2563EB;">AI</span>
+            </div>
+            <div style="font-size:0.8rem;color:#5B6B7F;font-weight:500;margin-top:2px;">School Operations Platform</div>
         </div>
     """, unsafe_allow_html=True)
 with col_status:
-    st.markdown(f"""
-        <div style="text-align: right; margin-top: 10px;">
-            <span class="{db_badge_class}">{db_status_text}</span>
-            <br/><span style="font-size: 0.75rem; color: #94a3b8;">Active Alerts: <strong>{unresolved_count}</strong></span>
+    render_db_status_bar(
+        db_instance.connection_status, unresolved_count,
+        DB_STATUS_CONNECTED, DB_STATUS_MISSING_CONFIG
+    )
+
+st.markdown("<hr style='border:none;border-top:1px solid #D9E2EC;margin:8px 0 16px;'>", unsafe_allow_html=True)
+
+# ── 5. Sidebar ──────────────────────────────────────────────────────────────
+with st.sidebar:
+    st.markdown("""
+        <div style="padding:16px 0 12px;border-bottom:1px solid #D9E2EC;margin-bottom:12px;">
+            <div style="font-size:1.1rem;font-weight:800;color:#17365D;">EduOS AI</div>
+            <div style="font-size:0.72rem;color:#5B6B7F;font-weight:500;margin-top:2px;">School Operations Platform</div>
         </div>
     """, unsafe_allow_html=True)
 
-st.markdown("---")
-
-# 4. Sidebar Controls & Supabase Drawer
-with st.sidebar:
-    st.image("https://img.icons8.com/isometric/96/000000/graduation-cap.png", width=50)
-    st.markdown("### Persona Switcher")
-    selected_persona = st.selectbox(
-        "Select User Persona:",
-        ["School Administrator", "Teacher", "Student", "Parent"],
-        index=0
+    # ── Signed-in user badge (read-only — no free persona switching) ────────────
+    role_icon  = ROLE_ICONS.get(active_role, "👤")
+    role_label = ROLE_LABELS.get(active_role, active_role.title())
+    st.markdown(
+        f"""
+        <div style="background:#F0F4FF;border:1px solid #C7D7F5;border-radius:8px;
+                    padding:10px 14px;margin-bottom:12px;">
+            <div style="font-size:0.78rem;color:#5B6B7F;font-weight:500;">Signed in as</div>
+            <div style="font-size:0.95rem;font-weight:700;color:#17365D;margin-top:2px;">
+                {role_icon} {auth['username']}
+            </div>
+            <div style="font-size:0.75rem;color:#2563EB;margin-top:2px;">{role_label}</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
     )
 
-    persona_key_map = {
-        "School Administrator": "admin",
-        "Teacher": "teacher",
-        "Student": "student",
-        "Parent": "parent"
-    }
-    active_persona = persona_key_map[selected_persona]
+    # ── Role-scoped navigation ───────────────────────────────────────────────
+    st.markdown("**Navigation**")
 
-    st.markdown("---")
-    st.markdown("### Autonomous Modules")
-    selected_tab = st.radio(
-        "Navigation Module:",
-        [
-            "📊 Persona Dashboard",
-            "📄 AI Document Reader (Multi-Slot Forms)",
-            "👩‍🏫 Teacher Availability & Roster",
-            "🗓️ Smart Timetable Engine (OR-Tools Solver)",
-            "🗄️ Unified Data Layer",
-            "🚨 Proactive Alerts Center",
-            "📈 Predictive Insights",
-            "🤖 AI Copilot (NLQ)"
-        ]
-    )
+    # Build the tab list based on what the current role can access
+    _all_tabs = [
+        ("📊 Persona Dashboard",                        None),               # always visible
+        ("📄 AI Document Reader (Multi-Slot Forms)",    "documents:write"),  # admin only
+        ("👩\u200d🏫 Teacher Availability & Roster",       "teachers:write"),   # admin only
+        ("🗓️ Smart Timetable Engine (OR-Tools Solver)", "timetable:write"),  # admin only
+        ("🗄️ Unified Data Layer",                       "students:read_all"),# admin + teacher
+        ("🚨 Proactive Alerts Center",                  None),               # always visible (scoped)
+        ("📈 Predictive Insights",                      "analytics:read_all"),# admin only
+        ("🤖 AI Copilot (NLQ)",                         "copilot:use"),       # admin + teacher
+    ]
+    visible_tabs = [
+        label for label, perm in _all_tabs
+        if perm is None or has_permission(active_role, perm)
+    ]
 
-    st.markdown("---")
-    with st.expander("⚡ Database & AI Status"):
+    selected_tab = st.radio("Module:", visible_tabs)
+
+    st.markdown("<hr style='border:none;border-top:1px solid #D9E2EC;margin:10px 0;'>", unsafe_allow_html=True)
+    with st.expander("Database & AI Status"):
         st.write(f"**Supabase Host:** `{db_instance.supabase_url or 'Not configured'}`")
         st.write(f"**Groq Model:** `llama-3.3-70b-versatile`")
         st.write(f"**Timetable Solver:** `Google OR-Tools CP-SAT`")
@@ -204,128 +182,342 @@ with st.sidebar:
             refresh_from_db()
             st.rerun()
 
-# 5. Render Selected Tab Module
+    st.markdown("<hr style='border:none;border-top:1px solid #D9E2EC;margin:10px 0;'>", unsafe_allow_html=True)
+    if st.button("🚪 Sign Out", use_container_width=True):
+        logout_user()
+        st.rerun()
+
+# ── 6. Render Selected Tab Module ────────────────────────────────────────────
 
 # ----------------------------------------------------
 # TAB 1: Persona Dashboard
 # ----------------------------------------------------
 if selected_tab == "📊 Persona Dashboard":
-    st.subheader(f"Dashboard — {selected_persona} View")
 
-    if active_persona == "admin":
-        m1, m2, m3, m4 = st.columns(4)
-        students_list = st.session_state.students
-        avg_att = round(sum(float(s.get("attendance_pct", 0)) for s in students_list) / max(1, len(students_list)), 1) if students_list else 0.0
+    if active_role == "admin":
+        students_list = visible_students
+        avg_att = round(
+            sum(float(s.get("attendance_pct", 0)) for s in students_list)
+            / max(1, len(students_list)), 1
+        ) if students_list else 0.0
         conflicts = len([t for t in st.session_state.timetable if t.get("has_conflict")])
         pending_docs = len([d for d in st.session_state.documents if d.get("status") == "review_required"])
+        unresolved = [a for a in visible_alerts if not a.get("resolved")]
 
-        m1.metric("Enrolled Students", len(students_list), "Real Supabase DB")
-        m2.metric("Avg School Attendance", f"{avg_att}%", f"{'High' if avg_att >= 80 else 'Warning'}")
-        m3.metric("Timetable Conflicts", f"{conflicts} Clashes", delta_color="inverse")
-        m4.metric("Docs Pending Review", f"{pending_docs} Docs")
+        # ── Dashboard header ──────────────────────────────────────────────────
+        hdr_col, btn_col = st.columns([4, 1])
+        with hdr_col:
+            render_page_header(
+                "School Operations Overview",
+                "Monitor student, academic, staffing and administrative operations from one place."
+            )
+        with btn_col:
+            if st.button("Refresh Data", type="primary", use_container_width=True):
+                refresh_from_db()
+                st.session_state.insights = generate_all_insights(
+                    students=st.session_state.get("students", []),
+                    teachers=st.session_state.get("teachers", []),
+                    teacher_availability=st.session_state.get("teacher_availability", []),
+                    timetable=st.session_state.get("timetable", []),
+                    documents=st.session_state.get("documents", []),
+                )
+                st.rerun()
 
-        col_left, col_right = st.columns([1.2, 1])
-        with col_left:
-            st.markdown("#### 🚨 High-Priority Proactive Alerts (Live DB)")
-            unresolved = [a for a in st.session_state.alerts if not a.get("resolved")]
+        # ── KPI Cards ─────────────────────────────────────────────────────────
+        k1, k2, k3, k4 = st.columns(4)
+        with k1:
+            render_kpi_card(
+                "Students Enrolled",
+                str(len(students_list)) if students_list else "0",
+                "Active records" if students_list else "No records yet",
+                "good" if students_list else "",
+            )
+        with k2:
+            att_status = "good" if avg_att >= 80 else ("warning" if avg_att >= 60 else "danger")
+            render_kpi_card(
+                "Average Attendance",
+                f"{avg_att}%" if students_list else "0%",
+                "School-wide average" if students_list else "No attendance data",
+                att_status if students_list else "",
+            )
+        with k3:
+            render_kpi_card(
+                "Timetable Conflicts",
+                str(conflicts),
+                "Active conflicts" if conflicts else "No conflicts detected",
+                "danger" if conflicts > 0 else "good",
+            )
+        with k4:
+            render_kpi_card(
+                "Documents Pending Review",
+                str(pending_docs),
+                "Awaiting human review" if pending_docs else "Queue is clear",
+                "warning" if pending_docs > 0 else "good",
+            )
+
+        st.markdown("<div style='margin-top:8px;'></div>", unsafe_allow_html=True)
+
+        # ── Operational Status ────────────────────────────────────────────────
+        render_section_header("Operational Status", "Live status across all school modules.")
+        op1, op2, op3, op4 = st.columns(4)
+
+        with op1:
+            att_level = "LOW" if avg_att >= 80 else ("MODERATE" if avg_att >= 60 else "HIGH")
+            render_health_card(
+                "Attendance",
+                "Healthy" if avg_att >= 80 else ("At Risk" if avg_att >= 60 else "Critical"),
+                f"{avg_att}%" if students_list else "0%",
+                f"{len(students_list)} students tracked" if students_list else "No attendance data",
+                att_level,
+            )
+            if st.button("View Attendance", key="op_att", use_container_width=True):
+                st.session_state["_nav"] = "📊 Persona Dashboard"
+
+        with op2:
+            tt_level = "LOW" if conflicts == 0 else ("MODERATE" if conflicts <= 2 else "HIGH")
+            render_health_card(
+                "Timetable",
+                "No Conflicts" if conflicts == 0 else f"{conflicts} Conflict(s)",
+                f"{len(st.session_state.timetable)} slots" if st.session_state.timetable else "0 slots",
+                "Schedule is clean" if conflicts == 0 else "Conflicts need resolution",
+                tt_level,
+            )
+            if st.button("View Timetable", key="op_tt", use_container_width=True):
+                st.session_state["_nav"] = "🗓️ Smart Timetable Engine (OR-Tools Solver)"
+
+        with op3:
+            doc_level = "LOW" if pending_docs == 0 else ("MODERATE" if pending_docs <= 3 else "HIGH")
+            render_health_card(
+                "Document Processing",
+                "Queue Clear" if pending_docs == 0 else f"{pending_docs} Pending",
+                f"{len(st.session_state.documents)} total docs" if st.session_state.documents else "0 docs",
+                "No documents awaiting review" if pending_docs == 0 else "Review required",
+                doc_level,
+            )
+            if st.button("View Documents", key="op_doc", use_container_width=True):
+                st.session_state["_nav"] = "📄 AI Document Reader (Multi-Slot Forms)"
+
+        with op4:
+            teachers_list = st.session_state.teachers
+            absent_count = len([t for t in teachers_list if t.get("status") == "absent"])
+            staff_level = "LOW" if absent_count == 0 else ("MODERATE" if absent_count <= 2 else "HIGH")
+            render_health_card(
+                "Staffing",
+                "Fully Staffed" if absent_count == 0 else f"{absent_count} Absent",
+                f"{len(teachers_list)} teachers" if teachers_list else "0 teachers",
+                "All teachers available" if absent_count == 0 else f"{absent_count} teacher(s) unavailable",
+                staff_level,
+            )
+            if st.button("View Staffing", key="op_staff", use_container_width=True):
+                st.session_state["_nav"] = "👩🏫 Teacher Availability & Roster"
+
+        st.markdown("<div style='margin-top:8px;'></div>", unsafe_allow_html=True)
+
+        # ── Priority Alerts + AI Insights ─────────────────────────────────────
+        left_col, right_col = st.columns([1, 1])
+
+        with left_col:
+            render_section_header("Priority Alerts")
             if unresolved:
                 for alt in unresolved:
-                    st.warning(f"**{alt['title']}**: {alt['message']}")
+                    render_alert_card(alt)
+                    if st.button("Review", key=f"review_{alt.get('id', alt['title'])}", use_container_width=True):
+                        st.session_state["_nav"] = "🚨 Proactive Alerts Center"
             else:
-                st.info("No active alerts in Supabase database.")
+                render_empty_state("No active alerts", "All systems are operating normally.", "")
+                if st.button("View Alert Center", key="view_alerts", use_container_width=True):
+                    st.session_state["_nav"] = "🚨 Proactive Alerts Center"
 
-        with col_right:
-            st.markdown("#### 📈 AI Analytics Insights")
+        with right_col:
+            render_section_header("AI Analytics Insights")
             live_insights = st.session_state.insights
             if live_insights:
-                for ins in live_insights[:3]:  # show top 3 on dashboard
-                    sev = ins.get("severity", "info")
-                    icon = "🔴" if sev == "critical" else ("🟡" if sev == "warning" else "🟢")
-                    st.info(f"{icon} **{ins['title']}**\n\n{ins.get('forecast', '')}")
+                for ins in live_insights[:3]:
+                    render_insight_card(ins)
+                if st.button("View All Insights", key="view_insights", use_container_width=True):
+                    st.session_state["_nav"] = "📈 Predictive Insights"
             else:
-                st.info("No insight data available.")
+                render_empty_state(
+                    "No insights available",
+                    "Click Refresh Data to generate AI analytics.",
+                    ""
+                )
 
-    elif active_persona == "teacher":
-        st.markdown("#### 📝 Class Live Attendance Marker")
-        st.caption("1-Click Present/Absent updates Supabase Postgres in real time.")
-        
-        students_list = st.session_state.students
+        st.markdown("<div style='margin-top:8px;'></div>", unsafe_allow_html=True)
+
+        # ── Quick Actions ─────────────────────────────────────────────────────
+        render_section_header("Quick Actions", "Jump directly to key workflows.")
+        qa1, qa2, qa3, qa4, qa5, qa6 = st.columns(6)
+        with qa1:
+            st.button("Add Student", key="qa_student", type="primary", use_container_width=True)
+        with qa2:
+            st.button("Process Document", key="qa_doc", type="primary", use_container_width=True)
+        with qa3:
+            st.button("Manage Teachers", key="qa_teacher", use_container_width=True)
+        with qa4:
+            st.button("Generate Timetable", key="qa_tt", use_container_width=True)
+        with qa5:
+            st.button("View Alerts", key="qa_alerts", use_container_width=True)
+        with qa6:
+            st.button("Ask AI Copilot", key="qa_copilot", use_container_width=True)
+
+    elif active_role == "teacher":
+        render_page_header(
+            "Teacher Dashboard",
+            "Manage class attendance and monitor student records in real time."
+        )
+        render_section_header("Class Attendance", "Mark present or absent — updates Supabase instantly.")
+
+        students_list = visible_students
         if students_list:
             for stu in students_list:
+                att_pct = float(stu.get('attendance_pct', 0))
+                att_status = "good" if att_pct >= 80 else ("warning" if att_pct >= 60 else "danger")
+                badge_level = "success" if att_pct >= 80 else ("warning" if att_pct >= 60 else "danger")
+                st.markdown(
+                    f"""
+<div style="background:#FFFFFF;border:1px solid #D9E2EC;border-left:3px solid {'#16A34A' if att_pct >= 80 else ('#D97706' if att_pct >= 60 else '#DC2626')};
+            border-radius:8px;padding:12px 18px;margin-bottom:8px;
+            box-shadow:0 1px 3px rgba(0,0,0,0.04);">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+        <div style="flex:1;">
+            <div style="font-size:0.9rem;font-weight:700;color:#17365D;">{stu['name']}</div>
+            <div style="font-size:0.78rem;color:#5B6B7F;margin-top:2px;">Class {stu.get('class', '—')} &nbsp;·&nbsp; Attendance: <strong>{att_pct}%</strong></div>
+        </div>
+    </div>
+</div>""",
+                    unsafe_allow_html=True
+                )
                 c1, c2, c3 = st.columns([2, 1, 1])
-                with c1:
-                    st.write(f"**{stu['name']}** (Class {stu.get('class')})")
-                    st.caption(f"Current Attendance: {stu.get('attendance_pct')}%")
                 with c2:
-                    if st.button(f"Mark Present", key=f"pres_{stu['id']}"):
+                    if st.button("Mark Present", key=f"pres_{stu['id']}", type="primary", use_container_width=True):
                         mark_attendance(stu['id'], True)
                         st.rerun()
                 with c3:
-                    if st.button(f"Mark Absent", key=f"abs_{stu['id']}"):
+                    if st.button("Mark Absent", key=f"abs_{stu['id']}", use_container_width=True):
                         mark_attendance(stu['id'], False)
                         st.rerun()
         else:
-            st.info("No enrolled students found in Supabase database. Add students via AI Document Reader tab.")
+            render_empty_state(
+                "No enrolled students",
+                "Add students via the AI Document Reader tab to begin marking attendance.",
+                ""
+            )
 
-    elif active_persona == "student":
-        if st.session_state.students:
-            stu = st.session_state.students[0]
-            st.success(f"Welcome back, {stu['name']}! Class {stu.get('class')} • Roll No: {stu.get('roll_no', 'N/A')}")
-            
-            c1, c2, c3 = st.columns(3)
-            c1.metric("My Attendance", f"{stu.get('attendance_pct')}%")
-            c2.metric("Academic GPA", f"{stu.get('gpa')} / 4.0")
-            c3.metric("Fee Status", f"₹{stu.get('fee_amount_due')}", str(stu.get("fee_status", "")).upper())
+    elif active_role == "student":
+        if visible_students:
+            stu = visible_students[0]
+            render_page_header(
+                f"Welcome, {stu['name']}",
+                f"Class {stu.get('class', '—')}  ·  Roll No: {stu.get('roll_no', 'N/A')}"
+            )
 
-            st.markdown("#### My Class Timetable (Live Supabase DB)")
-            df_t = pd.DataFrame(st.session_state.timetable)
+            att_pct = float(stu.get('attendance_pct', 0))
+            gpa_val = stu.get('gpa', 0)
+            fee_due = stu.get('fee_amount_due', 0)
+            fee_status = str(stu.get('fee_status', '')).lower()
+
+            k1, k2, k3 = st.columns(3)
+            with k1:
+                att_status = "good" if att_pct >= 80 else ("warning" if att_pct >= 60 else "danger")
+                render_kpi_card(
+                    "My Attendance",
+                    f"{att_pct}%",
+                    "Above threshold" if att_pct >= 75 else "Below 75% — action required",
+                    att_status,
+                )
+            with k2:
+                gpa_status = "good" if float(gpa_val or 0) >= 3.0 else ("warning" if float(gpa_val or 0) >= 2.0 else "danger")
+                render_kpi_card(
+                    "Academic GPA",
+                    f"{gpa_val} / 4.0",
+                    "Current semester GPA",
+                    gpa_status,
+                )
+            with k3:
+                fee_card_status = "good" if fee_status == "paid" else ("warning" if fee_status == "pending" else "danger")
+                render_kpi_card(
+                    "Fee Status",
+                    f"\u20b9{fee_due:,}" if fee_due else "\u20b90",
+                    fee_status.upper() if fee_status else "No data",
+                    fee_card_status,
+                )
+
+            render_section_header("My Class Timetable", "Live schedule from Supabase.")
+            df_t = pd.DataFrame(visible_timetable)
             if not df_t.empty:
                 cols_to_show = [c for c in ["period", "time", "subject", "teacher_name", "room"] if c in df_t.columns]
                 st.dataframe(df_t[cols_to_show], use_container_width=True)
             else:
-                st.info("No active timetable schedule in Supabase.")
+                render_empty_state("No timetable available", "No active schedule in Supabase.", "")
         else:
-            st.info("No student records in Supabase.")
+            render_empty_state("No student records", "No student records found in Supabase.", "")
 
-    else: # Parent
-        if st.session_state.students:
-            stu = st.session_state.students[0]
-            st.info(f"Parent Portal for: **{stu['name']}** (Class {stu.get('class')})")
+    else:  # parent
+        if visible_students:
+            stu = visible_students[0]
+            render_page_header(
+                "Parent Portal",
+                f"Monitoring: {stu['name']}  ·  Class {stu.get('class', '—')}"
+            )
+
+            fee_due = stu.get('fee_amount_due', 0)
+            fee_status = str(stu.get('fee_status', '')).lower()
+            att_pct = float(stu.get('attendance_pct', 100.0))
 
             c1, c2 = st.columns(2)
             with c1:
-                st.markdown("#### 💳 Tuition Fee Invoice")
-                st.write(f"**Amount Due:** ₹{stu.get('fee_amount_due', 0):,}")
-                st.write(f"**Status:** {str(stu.get('fee_status', '')).upper()}")
+                render_section_header("Tuition Fee Invoice")
+                fee_card_status = "good" if fee_status == "paid" else ("warning" if fee_status == "pending" else "danger")
+                render_kpi_card(
+                    "Amount Due",
+                    f"\u20b9{fee_due:,}",
+                    fee_status.upper() if fee_status else "No data",
+                    fee_card_status,
+                )
+                st.markdown("<div style='margin-top:12px;'></div>", unsafe_allow_html=True)
                 if stu.get("fee_status") != "paid":
-                    if st.button("💳 Pay Fee Online"):
+                    if st.button("Pay Fee Online", type="primary", use_container_width=True):
                         pay_fee(stu["id"])
-                        st.success("Payment Successful! Database Fee Ledger updated in Supabase.")
+                        st.success("Payment successful. Fee ledger updated in Supabase.")
                         st.rerun()
                 else:
-                    st.success("✅ All Fees Paid")
+                    st.markdown(
+                        render_status_badge("All Fees Paid", "success"),
+                        unsafe_allow_html=True
+                    )
 
             with c2:
-                st.markdown("#### 📊 Child Attendance Status")
-                st.progress(min(1.0, float(stu.get("attendance_pct", 100.0)) / 100.0))
-                if float(stu.get("attendance_pct", 100.0)) < 75:
-                    st.error("⚠️ Attendance Warning: Below 75% threshold. Please contact class teacher.")
+                render_section_header("Attendance Status")
+                att_status = "good" if att_pct >= 80 else ("warning" if att_pct >= 60 else "danger")
+                render_kpi_card(
+                    "Attendance",
+                    f"{att_pct}%",
+                    "Above threshold" if att_pct >= 75 else "Below 75% — contact class teacher",
+                    att_status,
+                )
+                st.markdown("<div style='margin-top:12px;'></div>", unsafe_allow_html=True)
+                st.progress(min(1.0, att_pct / 100.0))
+                if att_pct < 75:
+                    st.warning("Attendance is below the 75% threshold. Please contact the class teacher.")
         else:
-            st.info("No student records in Supabase database.")
+            render_empty_state("No student records", "No student records found in Supabase database.", "")
 
 # ----------------------------------------------------
 # TAB 2: AI Document Reader (Multi-Slot Form Inputs)
 # ----------------------------------------------------
 elif selected_tab == "📄 AI Document Reader (Multi-Slot Forms)":
-    st.subheader("Feature 1 — AI Document Reader (Groq LLM Vision & Form Extraction)")
-    st.caption("Upload admission forms, fee receipts, or paste raw text. OCR + Groq AI extracts structured JSON with full Pydantic validation & audit trail.")
+    render_page_header(
+        "AI Document Reader",
+        "Upload admission forms, fee receipts, or paste raw text. OCR + Groq AI extracts structured JSON with full Pydantic validation & audit trail."
+    )
 
     doc_type_choice = st.selectbox("Document Category:", ["admission_form", "fee_receipt", "leave_application"])
 
     doc_tab1, doc_tab2, doc_tab3 = st.tabs(["📷 Slot 1: Form Picture Upload", "📄 Slot 2: Document File Upload", "✍️ Slot 3: Paste Raw Form Text"])
 
     with doc_tab1:
-        st.markdown("#### Slot 1: Upload Admission Form / Receipt Image")
+        render_section_header("Slot 1: Upload Admission Form / Receipt Image")
         img_file = st.file_uploader("Drop image (PNG, JPG, WEBP, PDF):", type=["png", "jpg", "jpeg", "webp", "pdf"], key="doc_img_slot")
         if img_file and st.button("Run OCR & Groq AI Form Extraction", key="btn_doc_img"):
             doc_rec, val_stu = process_and_save_document_input(file_obj=img_file, doc_type=doc_type_choice)
@@ -333,7 +525,7 @@ elif selected_tab == "📄 AI Document Reader (Multi-Slot Forms)":
             st.rerun()
 
     with doc_tab2:
-        st.markdown("#### Slot 2: Upload Document File (TXT, CSV, PDF)")
+        render_section_header("Slot 2: Upload Document File (TXT, CSV, PDF)")
         doc_file = st.file_uploader("Drop document file:", type=["txt", "csv", "pdf"], key="doc_file_slot")
         if doc_file and st.button("Extract Document via Groq AI", key="btn_doc_file"):
             doc_rec, val_stu = process_and_save_document_input(file_obj=doc_file, doc_type=doc_type_choice)
@@ -341,7 +533,7 @@ elif selected_tab == "📄 AI Document Reader (Multi-Slot Forms)":
             st.rerun()
 
     with doc_tab3:
-        st.markdown("#### Slot 3: Paste User-Defined Raw Text")
+        render_section_header("Slot 3: Paste User-Defined Raw Text")
         paste_text = st.text_area(
             "Paste form text (e.g. 'ADMISSION FORM: Student Rahul Verma, Class 8A, Parent Rajesh Verma, Phone +91 98765 12345'):",
             height=120,
@@ -352,29 +544,28 @@ elif selected_tab == "📄 AI Document Reader (Multi-Slot Forms)":
             st.success("Extracted user text via Groq AI! Saved audit trail in Supabase.")
             st.rerun()
 
-    st.markdown("---")
-    st.markdown("### 🔍 Human-in-the-Loop Review & Audit Queue (Supabase DB)")
+    render_section_header("Human-in-the-Loop Review & Audit Queue", "Review and confirm AI-extracted fields before committing to Supabase.")
     docs_list = st.session_state.documents
     if docs_list:
         c_sel, c_view = st.columns([1, 2])
         with c_sel:
-            st.markdown("#### Document Inbox")
+            render_section_header("Document Inbox")
             doc_options = [f"{d['id']} - {d['filename']} [{d.get('source_type', 'file')}]" for d in docs_list]
             selected_option = st.selectbox("Select document record:", doc_options)
             sel_id = selected_option.split(" - ")[0]
             selected_doc = next(d for d in docs_list if d["id"] == sel_id)
 
-            st.markdown("#### Audit Trail Details")
+            render_section_header("Audit Trail Details")
             st.write(f"**Source Type:** `{selected_doc.get('source_type')}`")
             st.write(f"**Status:** `{selected_doc.get('status')}`")
             if selected_doc.get("validation_errors"):
                 st.error(f"Validation Warning: {selected_doc.get('validation_errors')}")
-            
-            st.markdown("#### Raw Extracted OCR Stream")
+
+            render_section_header("Raw Extracted OCR Stream")
             st.code(selected_doc.get("ocr_raw_text", ""), language="text")
 
         with c_view:
-            st.markdown(f"#### Human Review: `{selected_doc['filename']}`")
+            render_section_header(f"Human Review: {selected_doc['filename']}")
             st.caption("Review or edit Groq AI extracted fields before permanent student enrollment in Supabase.")
 
             fields = selected_doc.get("fields", {}) or {}
@@ -393,13 +584,15 @@ elif selected_tab == "📄 AI Document Reader (Multi-Slot Forms)":
 # TAB 3: Teacher Availability & Roster Manager (NEW)
 # ----------------------------------------------------
 elif selected_tab == "👩‍🏫 Teacher Availability & Roster":
-    st.subheader("Feature — Teacher Roster & Availability Manager (User-Defined AI Input)")
-    st.caption("Upload teacher roster files or paste custom availability instructions. Groq AI parses roster & constraints, then OR-Tools solver re-assigns schedules.")
+    render_page_header(
+        "Teacher Availability & Roster",
+        "Upload teacher roster files or paste custom availability instructions. Groq AI parses roster & constraints, then OR-Tools solver re-assigns schedules."
+    )
 
     t_slot1, t_slot2 = st.tabs(["📄 Slot 1: Upload Roster File", "✍️ Slot 2: Paste Teacher Availability Text"])
 
     with t_slot1:
-        st.markdown("#### Slot 1: Upload Roster / Availability File")
+        render_section_header("Slot 1: Upload Roster / Availability File")
         t_file = st.file_uploader("Upload Roster File (TXT, CSV, Image):", type=["txt", "csv", "png", "jpg"], key="tch_file_slot")
         if t_file and st.button("Parse Roster File via Groq AI", key="btn_tch_file"):
             n_tch, n_av, text = process_and_save_teacher_input(file_obj=t_file)
@@ -407,7 +600,7 @@ elif selected_tab == "👩‍🏫 Teacher Availability & Roster":
             st.rerun()
 
     with t_slot2:
-        st.markdown("#### Slot 2: Paste Custom Teacher Availability Text")
+        render_section_header("Slot 2: Paste Custom Teacher Availability Text")
         t_text = st.text_area(
             "Paste teacher info (e.g. 'Dr. Sunita Mehta teaches Mathematics for 8A and 8B. Mrs. Kavita Singh is unavailable on Monday Period 3'):",
             height=120,
@@ -418,12 +611,11 @@ elif selected_tab == "👩‍🏫 Teacher Availability & Roster":
             st.success(f"Processed teacher text! Saved {n_tch} teacher(s) & {n_av} availability rule(s) in Supabase. Timetable re-optimized via OR-Tools!")
             st.rerun()
 
-    st.markdown("---")
-    st.markdown("### 📋 Faculty Directory & Availability Rules (Live Supabase DB)")
+    render_section_header("Faculty Directory & Availability Rules", "Live records from Supabase.")
     
     col_t1, col_t2 = st.columns(2)
     with col_t1:
-        st.markdown("#### Faculty Directory")
+        render_section_header("Faculty Directory")
         teachers_list = st.session_state.teachers
         if teachers_list:
             df_t = pd.DataFrame(teachers_list)
@@ -433,7 +625,7 @@ elif selected_tab == "👩‍🏫 Teacher Availability & Roster":
             st.info("No teachers enrolled in Supabase yet. Use input slots above to add teachers.")
 
     with col_t2:
-        st.markdown("#### Availability & Leave Constraints (`teacher_availability`)")
+        render_section_header("Availability & Leave Constraints")
         avails_list = st.session_state.teacher_availability
         if avails_list:
             df_av = pd.DataFrame(avails_list)
@@ -446,13 +638,15 @@ elif selected_tab == "👩‍🏫 Teacher Availability & Roster":
 # TAB 4: Smart Timetable Engine (OR-Tools Solver)
 # ----------------------------------------------------
 elif selected_tab == "🗓️ Smart Timetable Engine (OR-Tools Solver)":
-    st.subheader("Feature 2 — Smart Timetable Engine (Google OR-Tools CP-SAT Solver)")
-    st.caption("Upload timetable schedules via Picture, File, or Raw Text. Groq AI extracts slot constraints → Pydantic validates → Google OR-Tools solves conflicts → Supabase stores result.")
+    render_page_header(
+        "Smart Timetable Engine",
+        "Upload timetable schedules via Picture, File, or Raw Text. Groq AI extracts slot constraints → Pydantic validates → Google OR-Tools solves conflicts → Supabase stores result."
+    )
 
     tt_tab1, tt_tab2, tt_tab3 = st.tabs(["📷 Slot 1: Timetable Picture Image", "📄 Slot 2: Document / CSV File", "✍️ Slot 3: Paste Schedule Text"])
 
     with tt_tab1:
-        st.markdown("#### Slot 1: Timetable Picture Upload")
+        render_section_header("Slot 1: Timetable Picture Upload")
         img_tt = st.file_uploader("Upload timetable image (PNG, JPG, PDF):", type=["png", "jpg", "jpeg", "pdf"], key="tt_img_slot")
         if img_tt and st.button("Extract & Solve Timetable Picture", key="btn_tt_img"):
             slots, warnings = process_and_save_timetable_input(file_obj=img_tt)
@@ -463,7 +657,7 @@ elif selected_tab == "🗓️ Smart Timetable Engine (OR-Tools Solver)":
             st.rerun()
 
     with tt_tab2:
-        st.markdown("#### Slot 2: Document / CSV Timetable File")
+        render_section_header("Slot 2: Document / CSV Timetable File")
         doc_tt = st.file_uploader("Upload document file (TXT, CSV):", type=["txt", "csv"], key="tt_doc_slot")
         if doc_tt and st.button("Extract & Solve Document Timetable", key="btn_tt_doc"):
             slots, warnings = process_and_save_timetable_input(file_obj=doc_tt)
@@ -471,7 +665,7 @@ elif selected_tab == "🗓️ Smart Timetable Engine (OR-Tools Solver)":
             st.rerun()
 
     with tt_tab3:
-        st.markdown("#### Slot 3: Paste Schedule Text")
+        render_section_header("Slot 3: Paste Schedule Text")
         paste_tt = st.text_area(
             "Paste timetable text (e.g. '8A, Mathematics, Dr. Sunita Mehta, Room 201\n8A, Science, Prof. Rajesh Gupta, Science Lab'):",
             height=120,
@@ -482,8 +676,7 @@ elif selected_tab == "🗓️ Smart Timetable Engine (OR-Tools Solver)":
             st.success(f"Solved schedule via OR-Tools! Saved to Supabase.")
             st.rerun()
 
-    st.markdown("---")
-    st.markdown("#### Faculty Absence & Substitution Controller")
+    render_section_header("Faculty Absence & Substitution Controller")
     teachers_list = st.session_state.teachers
     if teachers_list:
         cols = st.columns(len(teachers_list))
@@ -505,7 +698,7 @@ elif selected_tab == "🗓️ Smart Timetable Engine (OR-Tools Solver)":
     else:
         st.success("✅ Zero Conflicts — Schedule fully optimized by Google OR-Tools Solver in Supabase Database")
 
-    st.markdown("#### Master Timetable Grid (Live Supabase DB)")
+    render_section_header("Master Timetable Grid", "Live schedule from Supabase.")
     df = pd.DataFrame(st.session_state.timetable)
     if not df.empty:
         cols_to_show = [c for c in ["period", "time", "class_name", "subject", "teacher_name", "room", "has_conflict", "is_substitute", "substitute_teacher"] if c in df.columns]
@@ -517,8 +710,10 @@ elif selected_tab == "🗓️ Smart Timetable Engine (OR-Tools Solver)":
 # TAB 5: Unified Data Layer
 # ----------------------------------------------------
 elif selected_tab == "🗄️ Unified Data Layer":
-    st.subheader("Feature 3 — Unified Data Layer Explorer")
-    st.caption("Single source of truth in Supabase joining Student ID <-> Attendance <-> Fees <-> Schedule.")
+    render_page_header(
+        "Unified Data Layer",
+        "Single source of truth in Supabase joining Student ID ↔ Attendance ↔ Fees ↔ Schedule."
+    )
 
     df_stu = pd.DataFrame(st.session_state.students)
     if not df_stu.empty:
@@ -531,12 +726,14 @@ elif selected_tab == "🗄️ Unified Data Layer":
 # TAB 6: Proactive Alerts Center
 # ----------------------------------------------------
 elif selected_tab == "🚨 Proactive Alerts Center":
-    st.subheader("Feature 4 — Proactive Alerts & Notification Routing")
-    alerts_list = st.session_state.alerts
-    unresolved_alerts = [a for a in alerts_list if not a.get("resolved")]
+    render_page_header(
+        "Proactive Alerts Center",
+        "Rule-based monitoring across attendance, fees, timetable, and staffing. Alerts are routed by role."
+    )
+    unresolved_alerts = [a for a in visible_alerts if not a.get("resolved")]
     if unresolved_alerts:
         for alt in unresolved_alerts:
-            st.error(f"🚨 **{alt['title']}** [{str(alt.get('priority', 'medium')).upper()}]\n\n{alt['message']}\n\n*Action: {alt.get('action', '')}*")
+            render_alert_card(alt)
     else:
         st.success("✅ All alerts resolved in Supabase database.")
 
@@ -544,10 +741,9 @@ elif selected_tab == "🚨 Proactive Alerts Center":
 # TAB 7: Predictive Insights Engine
 # ----------------------------------------------------
 elif selected_tab == "📈 Predictive Insights":
-    st.subheader("Feature 5 — Analytics & Insights Engine")
-    st.caption(
-        "Real-time calculations over live school data. "
-        "Works with or without Supabase. Click Recalculate after any data change."
+    render_page_header(
+        "Predictive Insights",
+        "Real-time calculations over live school data. Works with or without Supabase. Click Recalculate after any data change."
     )
 
     col_btn, col_src = st.columns([1, 3])
@@ -578,71 +774,11 @@ elif selected_tab == "📈 Predictive Insights":
     if not insights_list:
         st.info("📊 No insights available. Click ‘Recalculate Insights’ to generate analytics.")
     else:
-        # Severity colour map
-        _SEV_COLOUR = {
-            "critical": ("#f87171", "rgba(244,63,94,0.12)", "🔴"),
-            "warning":  ("#fbbf24", "rgba(245,158,11,0.12)", "🟡"),
-            "info":     ("#34d399", "rgba(16,185,129,0.12)", "🟢"),
-        }
-        _CAT_ICON = {
-            "attendance": "📅",
-            "fees":       "💳",
-            "academic":   "🎓",
-            "documents":  "📄",
-            "timetable":  "🗓️",
-        }
-
         for ins in insights_list:
-            sev   = ins.get("severity", "info")
-            colour, bg, icon = _SEV_COLOUR.get(sev, _SEV_COLOUR["info"])
-            cat   = ins.get("category", "")
-            c_icon = _CAT_ICON.get(cat, "📊")
-            conf  = ins.get("confidence", 100)
-            trend = ins.get("trend", "stable")
-
-            st.markdown(
-                f"""
-                <div style="
-                    background:{bg};
-                    border:1px solid {colour}40;
-                    border-left:4px solid {colour};
-                    border-radius:12px;
-                    padding:18px 22px;
-                    margin-bottom:14px;
-                ">
-                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-                        <span style="font-size:1.05rem;font-weight:700;color:#f1f5f9;">
-                            {c_icon} {ins.get('title','')}
-                        </span>
-                        <span style="font-size:0.72rem;color:{colour};font-weight:600;
-                                     background:{colour}20;padding:3px 10px;border-radius:20px;">
-                            {icon} {sev.upper()} &nbsp;·&nbsp; {conf}% confidence
-                        </span>
-                    </div>
-                    <div style="font-size:1.1rem;font-weight:800;color:{colour};margin-bottom:6px;">
-                        {ins.get('metric','')}
-                    </div>
-                    <div style="font-size:0.88rem;color:#cbd5e1;margin-bottom:6px;">
-                        {ins.get('forecast','')}
-                    </div>
-                    <div style="font-size:0.82rem;color:#94a3b8;">
-                        → <em>{ins.get('recommendation','')}</em>
-                    </div>
-                    <div style="font-size:0.72rem;color:#475569;margin-top:6px;">
-                        Trend: {trend}
-                    </div>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
+            render_insight_card(ins)
 
     # ── Smart Staffing Forecast ──────────────────────────────────────────────
-    st.markdown("---")
-    st.markdown("### 👥 Smart Staffing Risk Score")
-    st.caption(
-        "Projected staffing pressure based on current workload and availability. "
-        "Deterministic rule-based score — not a machine-learning model."
-    )
+    render_section_header("Smart Staffing Risk Score", "Projected staffing pressure based on current workload and availability. Deterministic rule-based score — not a machine-learning model.")
 
     sr = st.session_state.get("staffing_report") or calculate_staffing_report(
         teachers=st.session_state.get("teachers", []),
@@ -656,33 +792,8 @@ elif selected_tab == "📈 Predictive Insights":
             "Add teacher records via the Teacher Availability & Roster tab."
         )
     else:
-        _SCORE_COLOUR = {
-            "LOW":      ("#34d399", "rgba(16,185,129,0.15)"),
-            "MODERATE": ("#fbbf24", "rgba(245,158,11,0.15)"),
-            "HIGH":     ("#f97316", "rgba(249,115,22,0.15)"),
-            "CRITICAL": ("#f87171", "rgba(244,63,94,0.15)"),
-        }
-        score  = sr["staffing_pressure_score"]
-        level  = sr["staffing_pressure_level"]
-        colour, bg = _SCORE_COLOUR.get(level, _SCORE_COLOUR["LOW"])
-
         # Score banner
-        st.markdown(
-            f"""
-            <div style="background:{bg};border:1px solid {colour}40;
-                        border-left:5px solid {colour};border-radius:14px;
-                        padding:20px 24px;margin-bottom:18px;">
-                <div style="font-size:0.8rem;color:#94a3b8;font-weight:600;
-                            letter-spacing:0.08em;margin-bottom:4px;">STAFFING HEALTH</div>
-                <div style="display:flex;align-items:baseline;gap:14px;">
-                    <span style="font-size:3rem;font-weight:900;color:{colour};">{score}</span>
-                    <span style="font-size:1rem;color:{colour};font-weight:700;">/100 · {level}</span>
-                </div>
-                <div style="font-size:0.82rem;color:#cbd5e1;margin-top:6px;">{sr['explanation']}</div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
+        render_staffing_banner(sr)
 
         # Four KPI tiles
         k1, k2, k3, k4 = st.columns(4)
@@ -718,13 +829,12 @@ elif selected_tab == "📈 Predictive Insights":
 | B — Timetable conflict ratio | 30 | {sr['uncovered_slots']}/{sr['total_slots']} slots | {bd['signal_b']} |
 | C — Workload overload ratio | 20 | {sr['overloaded_count']}/{sr['total_teachers']} teachers | {bd['signal_c']} |
 | D — Substitute dependency ratio | 15 | {sr['substitute_slots']}/{sr['total_slots']} slots | {bd['signal_d']} |
-| **Total** | **100** | | **{score}** |"""
+| **Total** | **100** | | **{sr['staffing_pressure_score']}** |"""
             )
 
         # Workload per teacher
         if sr["slots_per_teacher"]:
             with st.expander("📊 Teacher Workload Breakdown"):
-                import pandas as pd
                 wl_df = pd.DataFrame(
                     [{"Teacher": k, "Slots": v,
                       "Status": "⚠️ Overloaded" if v > sr["overload_threshold"] else "✅ Normal"}
@@ -734,51 +844,34 @@ elif selected_tab == "📈 Predictive Insights":
                 st.dataframe(wl_df, use_container_width=True, hide_index=True)
 
         # Recommendations
-        st.markdown("#### 📌 Staffing Recommendations")
+        render_section_header("Staffing Recommendations")
         for i, rec in enumerate(sr["recommendations"], 1):
-            st.markdown(
-                f"""
-                <div style="background:rgba(99,102,241,0.08);border-left:3px solid #6366f1;
-                            border-radius:8px;padding:10px 16px;margin-bottom:8px;
-                            font-size:0.88rem;color:#e2e8f0;">
-                    <strong>{i}.</strong> {rec}
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
+            render_recommendation_item(i, rec)
 
 # ----------------------------------------------------
 # TAB 8: AI Copilot (NLQ) — Grounded Intelligence Layer
 # ----------------------------------------------------
 elif selected_tab == "🤖 AI Copilot (NLQ)":
-    st.subheader("Feature 6 — AI Copilot")
-    st.caption(
-        "Grounded natural-language interface over live school data. "
-        "All numerical answers come from the Analytics & Staffing engines — the LLM only explains them."
+    render_page_header(
+        "AI Copilot",
+        "Grounded natural-language interface over live school data. All numerical answers come from the Analytics & Staffing engines — the LLM only explains them."
     )
 
     # Example questions
-    st.markdown(
-        """
-        <div style="background:rgba(99,102,241,0.08);border:1px solid rgba(99,102,241,0.2);
-                    border-radius:12px;padding:14px 18px;margin-bottom:16px;font-size:0.82rem;color:#94a3b8;">
-            <strong style="color:#a5b4fc;">Try asking:</strong>&nbsp;
-            "How is our staffing situation?" &nbsp;·&nbsp;
-            "Which teachers are overloaded?" &nbsp;·&nbsp;
-            "Are there any timetable conflicts?" &nbsp;·&nbsp;
-            "How many students are at attendance risk?" &nbsp;·&nbsp;
-            "Give me a school operations summary."
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+    render_copilot_prompt_card([
+        "How is our staffing situation?",
+        "Which teachers are overloaded?",
+        "Are there any timetable conflicts?",
+        "How many students are at attendance risk?",
+        "Give me a school operations summary.",
+    ])
 
     # Groq status badge
     if groq_client.is_available():
-        st.markdown('<span class="badge-emerald">⚡ Groq LLM Active</span>', unsafe_allow_html=True)
+        st.markdown(render_status_badge("⚡ Groq LLM Active", "success"), unsafe_allow_html=True)
     else:
         st.markdown(
-            '<span class="badge-amber">⚙️ Groq API key missing — deterministic fallback active</span>',
+            render_status_badge("⚙️ Groq API key missing — deterministic fallback active", "warning"),
             unsafe_allow_html=True,
         )
 

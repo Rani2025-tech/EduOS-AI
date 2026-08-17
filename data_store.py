@@ -1,6 +1,6 @@
 import streamlit as st
 import datetime
-from typing import Any
+from typing import Any, Optional, Dict
 import logging
 
 Tuple_Result = Any
@@ -10,9 +10,94 @@ from teacher_parser import parse_teacher_input
 from timetable_parser import parse_and_solve_timetable
 from analytics_engine import generate_all_insights
 from staffing_engine import calculate_staffing_report
+from auth import verify_password, issue_token, verify_token, TokenError, AuthError, is_auth_configured
 
 logger = logging.getLogger("EduOS_DataStore")
 logger.setLevel(logging.INFO)
+
+
+# ── Authentication helpers ────────────────────────────────────────────────────
+
+def init_auth_session():
+    """Initialises auth-related session state keys. Called once at app startup."""
+    if "auth" not in st.session_state:
+        st.session_state.auth = None          # None = not logged in
+    if "auth_token" not in st.session_state:
+        st.session_state.auth_token = None
+    if "auth_error" not in st.session_state:
+        st.session_state.auth_error = ""
+
+
+def login_user(username: str, password: str) -> bool:
+    """
+    Authenticates a user against the users table.
+    On success: stores auth payload and JWT in session state, returns True.
+    On failure: stores error message in session state, returns False.
+    Never logs or exposes the plaintext password.
+    """
+    st.session_state.auth_error = ""
+
+    if not is_auth_configured():
+        st.session_state.auth_error = (
+            "Authentication is not configured. Set JWT_SECRET_KEY in your .env file."
+        )
+        return False
+
+    if not username or not password:
+        st.session_state.auth_error = "Username and password are required."
+        return False
+
+    user = db_instance.get_user_by_username(username.strip())
+    if not user:
+        st.session_state.auth_error = "Invalid username or password."
+        return False
+
+    if not verify_password(password, user["password_hash"]):
+        st.session_state.auth_error = "Invalid username or password."
+        return False
+
+    token = issue_token(
+        user_id=user["id"],
+        role=user["role"],
+        linked_id=user.get("linked_id"),
+    )
+    st.session_state.auth_token = token
+    st.session_state.auth = {
+        "user_id":   user["id"],
+        "username":  user["username"],
+        "role":      user["role"],
+        "linked_id": user.get("linked_id"),
+    }
+    logger.info(f"User logged in: {user['username']} (role={user['role']})")
+    return True
+
+
+def logout_user():
+    """Clears auth session state and all cached school data."""
+    for key in ["auth", "auth_token", "auth_error",
+                "students", "teachers", "teacher_availability",
+                "timetable", "documents", "alerts", "insights",
+                "copilot_messages", "staffing_report", "db_connected"]:
+        st.session_state.pop(key, None)
+
+
+def get_current_auth() -> Optional[Dict]:
+    """Returns the current auth payload or None if not logged in."""
+    return st.session_state.get("auth")
+
+
+def is_authenticated() -> bool:
+    """Returns True if a valid auth session exists."""
+    auth = st.session_state.get("auth")
+    token = st.session_state.get("auth_token")
+    if not auth or not token:
+        return False
+    try:
+        verify_token(token)
+        return True
+    except TokenError:
+        logout_user()
+        return False
 
 
 def init_session_state():
