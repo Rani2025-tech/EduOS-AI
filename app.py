@@ -65,9 +65,26 @@ if not is_authenticated():
     /* Hide Streamlit sidebar and top chrome on login page */
     section[data-testid="stSidebar"] { display: none !important; }
     header[data-testid="stHeader"] { display: none !important; }
+    /* Light blue gap fill — page background + column gaps */
+    .stApp, body, [data-testid="stAppViewContainer"] {
+        background-color: #DBEAFE !important;
+    }
+    [data-testid="stAppViewContainer"] > section {
+        background-color: #DBEAFE !important;
+    }
     .main .block-container {
         padding: 0 !important;
         max-width: 100% !important;
+        background-color: #DBEAFE !important;
+    }
+    /* Column gap fill */
+    [data-testid="column"] {
+        background-color: #DBEAFE !important;
+    }
+    /* Right panel override to slightly different shade */
+    [data-testid="column"]:last-child {
+        background: #EEF2F7 !important;
+        min-height: 100vh;
     }
     /* Remove default form card shadow so our custom wrapper controls it */
     div[data-testid="stForm"] {
@@ -83,6 +100,49 @@ if not is_authenticated():
         color: #5B6B7F !important;
         text-transform: uppercase !important;
         letter-spacing: 0.07em !important;
+    }
+    /* ── All login inputs: identical styling for username + password ── */
+    div[data-baseweb="input"] {
+        border: 1.5px solid #D1D9E6 !important;
+        border-radius: 8px !important;
+        background: #FFFFFF !important;
+        transition: border-color 0.18s ease, box-shadow 0.18s ease !important;
+    }
+    div[data-baseweb="input"]:hover {
+        border-color: #93C5FD !important;
+    }
+    div[data-baseweb="input"]:focus-within {
+        border-color: #2563EB !important;
+        box-shadow: 0 0 0 3px rgba(37,99,235,0.10) !important;
+    }
+    /* All input types — text, password, any */
+    div[data-baseweb="input"] > input {
+        font-size: 0.9rem !important;
+        color: #17365D !important;
+        caret-color: #17365D !important;
+        -webkit-text-fill-color: #17365D !important;
+        padding: 10px 14px !important;
+        background: #FFFFFF !important;
+    }
+    div[data-baseweb="input"] > input::placeholder {
+        color: #A0AEC0 !important;
+        -webkit-text-fill-color: #A0AEC0 !important;
+    }
+    /* Autofill override — prevents browser black background on username */
+    div[data-baseweb="input"] > input:-webkit-autofill,
+    div[data-baseweb="input"] > input:-webkit-autofill:hover,
+    div[data-baseweb="input"] > input:-webkit-autofill:focus,
+    div[data-baseweb="input"] > input:-webkit-autofill:active,
+    input:-webkit-autofill,
+    input:-webkit-autofill:hover,
+    input:-webkit-autofill:focus,
+    input:-webkit-autofill:active {
+        -webkit-box-shadow: 0 0 0 1000px #FFFFFF inset !important;
+        box-shadow: 0 0 0 1000px #FFFFFF inset !important;
+        -webkit-text-fill-color: #17365D !important;
+        caret-color: #17365D !important;
+        background-color: #FFFFFF !important;
+        transition: background-color 9999s ease-in-out 0s !important;
     }
     /* Capability card hover lift — pure CSS, no JS */
     .edu-cap-card {
@@ -112,57 +172,7 @@ if not is_authenticated():
         animation: edu-pulse 2.4s ease-in-out infinite;
     }
 
-    /* ── Right panel: column background ────────────────────────────────── */
-    /* Paint the right Streamlit column directly via its data-testid wrapper */
-    [data-testid="column"]:last-child {
-        background: #EEF2F7 !important;
-        min-height: 100vh;
-    }
 
-    /* ── Input field refinements (login page only) ───────────────────────── */
-    /* Normal state */
-    div[data-baseweb="input"] {
-        border: 1.5px solid #D1D9E6 !important;
-        border-radius: 8px !important;
-        background: #F3F4F6 !important;
-        transition: border-color 0.18s ease, box-shadow 0.18s ease !important;
-    }
-    /* Hover state */
-    div[data-baseweb="input"]:hover {
-        border-color: #93C5FD !important;
-    }
-    /* Focus state */
-    div[data-baseweb="input"]:focus-within {
-        border-color: #2563EB !important;
-        box-shadow: 0 0 0 3px rgba(37,99,235,0.10) !important;
-    }
-    div[data-baseweb="input"] > input {
-        font-size: 0.9rem !important;
-        color: #111111 !important;
-        padding: 10px 14px !important;
-        background: transparent !important;
-    }
-    div[data-baseweb="input"] > input::placeholder {
-        color: #A0AEC0 !important;
-    }
-    /* Password bullet dots -- force dark color so they show on white bg */
-    div[data-baseweb="input"] > input[type="password"],
-    div[data-baseweb="input"] > input[type="password"]:focus,
-    .stTextInput input[type="password"],
-    input[type="password"] {
-        color: #FFFFFF !important;
-        caret-color: #FFFFFF !important;
-        -webkit-text-fill-color: #FFFFFF !important;
-    }
-    /* Revealed password text (eye icon switches type=password -> type=text).
-       Target the password stTextInput specifically via its position in the form. */
-    div[data-testid="stForm"] div[data-testid="stTextInput"]:last-of-type input,
-    div[data-testid="stForm"] div[data-testid="stTextInput"]:last-of-type input[type="text"],
-    div[data-testid="stForm"] div[data-testid="stTextInput"]:last-of-type input[type="password"] {
-        color: #FFFFFF !important;
-        caret-color: #FFFFFF !important;
-        -webkit-text-fill-color: #FFFFFF !important;
-    }
 
     /* ── Primary button — enterprise blue ────────────────────────────────── */
     .stButton > button[kind="primary"],
@@ -462,7 +472,7 @@ with st.sidebar:
     st.markdown("<hr style='border:none;border-top:1px solid #D9E2EC;margin:10px 0;'>", unsafe_allow_html=True)
     with st.expander("Database & AI Status"):
         st.write(f"**Supabase Host:** `{db_instance.supabase_url or 'Not configured'}`")
-        st.write(f"**Groq Model:** `llama-3.3-70b-versatile`")
+        st.write(f"**Groq Model:** `openai/gpt-oss-120b`")
         st.write(f"**Timetable Solver:** `Google OR-Tools CP-SAT`")
         if db_instance.connection_status == DB_STATUS_MISSING_CONFIG:
             st.warning(
@@ -912,18 +922,38 @@ elif selected_tab == TAB_DOCUMENTS:
 
     with doc_tab1:
         render_section_header("Slot 1: Upload Admission Form / Receipt Image")
-        img_file = st.file_uploader("Drop image (PNG, JPG, WEBP, PDF):", type=["png", "jpg", "jpeg", "webp", "pdf"], key="doc_img_slot")
-        if img_file and st.button("Run OCR & Groq AI Form Extraction", key="btn_doc_img"):
-            doc_rec, val_stu = process_and_save_document_input(file_obj=img_file, doc_type=doc_type_choice)
-            st.success(f"Parsed `{img_file.name}` via Groq AI! Saved audit trail in Supabase. Added to review inbox below.")
+        img_file = st.file_uploader("Drop image or document (PNG, JPG, WEBP, PDF, TXT, CSV):", type=["png", "jpg", "jpeg", "webp", "pdf", "txt", "csv"], key="doc_img_slot")
+        if img_file:
+            st.session_state["_doc_img_file"] = img_file
+        if st.session_state.get("_doc_img_file") and st.button("Run OCR & Groq AI Form Extraction", key="btn_doc_img"):
+            f = st.session_state.pop("_doc_img_file")
+            with st.spinner("Extracting fields via Groq AI..."):
+                try:
+                    doc_rec, val_stu = process_and_save_document_input(file_obj=f, doc_type=doc_type_choice)
+                    if doc_rec:
+                        st.success(f"Parsed `{f.name}` via Groq AI! Added to review inbox below.")
+                    else:
+                        st.error("Extraction returned empty. Check your file content.")
+                except Exception as e:
+                    st.error(f"Extraction failed: {e}")
             st.rerun()
 
     with doc_tab2:
         render_section_header("Slot 2: Upload Document File (TXT, CSV, PDF)")
-        doc_file = st.file_uploader("Drop document file:", type=["txt", "csv", "pdf"], key="doc_file_slot")
-        if doc_file and st.button("Extract Document via Groq AI", key="btn_doc_file"):
-            doc_rec, val_stu = process_and_save_document_input(file_obj=doc_file, doc_type=doc_type_choice)
-            st.success(f"Extracted `{doc_file.name}`! Added to review inbox below.")
+        doc_file = st.file_uploader("Drop document file (TXT, CSV, PDF):", type=["txt", "csv", "pdf"], key="doc_file_slot")
+        if doc_file:
+            st.session_state["_doc_file"] = doc_file
+        if st.session_state.get("_doc_file") and st.button("Extract Document via Groq AI", key="btn_doc_file"):
+            f = st.session_state.pop("_doc_file")
+            with st.spinner("Extracting fields via Groq AI..."):
+                try:
+                    doc_rec, val_stu = process_and_save_document_input(file_obj=f, doc_type=doc_type_choice)
+                    if doc_rec:
+                        st.success(f"Extracted `{f.name}`! Added to review inbox below.")
+                    else:
+                        st.error("Extraction returned empty. Check your file content.")
+                except Exception as e:
+                    st.error(f"Extraction failed: {e}")
             st.rerun()
 
     with doc_tab3:
@@ -934,8 +964,15 @@ elif selected_tab == TAB_DOCUMENTS:
             key="doc_text_slot"
         )
         if paste_text and st.button("Extract Raw Text via Groq AI", key="btn_doc_text"):
-            doc_rec, val_stu = process_and_save_document_input(raw_text_input=paste_text, doc_type=doc_type_choice)
-            st.success("Extracted user text via Groq AI! Saved audit trail in Supabase.")
+            with st.spinner("Extracting fields via Groq AI..."):
+                try:
+                    doc_rec, val_stu = process_and_save_document_input(raw_text_input=paste_text, doc_type=doc_type_choice)
+                    if doc_rec:
+                        st.success("Extracted via Groq AI! Added to review inbox below.")
+                    else:
+                        st.error("Extraction returned empty. Check your input text.")
+                except Exception as e:
+                    st.error(f"Extraction failed: {e}")
             st.rerun()
 
     render_section_header("Human-in-the-Loop Review & Audit Queue", "Review and confirm AI-extracted fields before committing to Supabase.")
@@ -987,10 +1024,13 @@ elif selected_tab == TAB_TEACHERS:
 
     with t_slot1:
         render_section_header("Slot 1: Upload Roster / Availability File")
-        t_file = st.file_uploader("Upload Roster File (TXT, CSV, Image):", type=["txt", "csv", "png", "jpg"], key="tch_file_slot")
-        if t_file and st.button("Parse Roster File via Groq AI", key="btn_tch_file"):
-            n_tch, n_av, text = process_and_save_teacher_input(file_obj=t_file)
-            st.success(f"Parsed `{t_file.name}`! Created {n_tch} teacher record(s) and {n_av} availability rule(s) in Supabase. Timetable re-optimized via OR-Tools!")
+        t_file = st.file_uploader("Upload Roster File (TXT, CSV, PDF, Image):", type=["txt", "csv", "pdf", "png", "jpg"], key="tch_file_slot")
+        if t_file:
+            st.session_state["_tch_file"] = t_file
+        if st.session_state.get("_tch_file") and st.button("Parse Roster File via Groq AI", key="btn_tch_file"):
+            f = st.session_state.pop("_tch_file")
+            n_tch, n_av, text = process_and_save_teacher_input(file_obj=f)
+            st.success(f"Parsed `{f.name}`! Created {n_tch} teacher record(s) and {n_av} availability rule(s) in Supabase. Timetable re-optimized via OR-Tools!")
             st.rerun()
 
     with t_slot2:
@@ -1042,8 +1082,11 @@ elif selected_tab == TAB_TIMETABLE:
     with tt_tab1:
         render_section_header("Slot 1: Timetable Picture Upload")
         img_tt = st.file_uploader("Upload timetable image (PNG, JPG, PDF):", type=["png", "jpg", "jpeg", "pdf"], key="tt_img_slot")
-        if img_tt and st.button("Extract & Solve Timetable Picture", key="btn_tt_img"):
-            slots, warnings = process_and_save_timetable_input(file_obj=img_tt)
+        if img_tt:
+            st.session_state["_tt_img"] = img_tt
+        if st.session_state.get("_tt_img") and st.button("Extract & Solve Timetable Picture", key="btn_tt_img"):
+            f = st.session_state.pop("_tt_img")
+            slots, warnings = process_and_save_timetable_input(file_obj=f)
             st.success(f"Generated {len(slots)} conflict-free slots using Google OR-Tools! Saved to Supabase.")
             if warnings:
                 for w in warnings:
@@ -1052,9 +1095,12 @@ elif selected_tab == TAB_TIMETABLE:
 
     with tt_tab2:
         render_section_header("Slot 2: Document / CSV Timetable File")
-        doc_tt = st.file_uploader("Upload document file (TXT, CSV):", type=["txt", "csv"], key="tt_doc_slot")
-        if doc_tt and st.button("Extract & Solve Document Timetable", key="btn_tt_doc"):
-            slots, warnings = process_and_save_timetable_input(file_obj=doc_tt)
+        doc_tt = st.file_uploader("Upload document file (TXT, CSV, PDF):", type=["txt", "csv", "pdf"], key="tt_doc_slot")
+        if doc_tt:
+            st.session_state["_tt_doc"] = doc_tt
+        if st.session_state.get("_tt_doc") and st.button("Extract & Solve Document Timetable", key="btn_tt_doc"):
+            f = st.session_state.pop("_tt_doc")
+            slots, warnings = process_and_save_timetable_input(file_obj=f)
             st.success(f"Generated {len(slots)} slots using OR-Tools Solver! Saved to Supabase.")
             st.rerun()
 

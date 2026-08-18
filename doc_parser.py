@@ -26,7 +26,8 @@ def parse_document_input(
         filename = getattr(file_obj, "name", filename)
         file_type = getattr(file_obj, "type", "")
 
-        if file_type.startswith("image/"):
+        ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
+        if file_type.startswith("image/") and ext not in ("txt", "csv"):
             source_type = "image"
             try:
                 image = Image.open(file_obj)
@@ -41,7 +42,22 @@ def parse_document_input(
             source_type = "file"
             try:
                 content = file_obj.read()
-                raw_text = content.decode("utf-8", errors="ignore")
+                if filename.lower().endswith(".pdf"):
+                    try:
+                        import pdfplumber
+                        import io
+                        with pdfplumber.open(io.BytesIO(content)) as pdf:
+                            raw_text = "\n".join(page.extract_text() or "" for page in pdf.pages).strip()
+                    except Exception:
+                        try:
+                            import pypdf
+                            import io
+                            reader = pypdf.PdfReader(io.BytesIO(content))
+                            raw_text = "\n".join(page.extract_text() or "" for page in reader.pages).strip()
+                        except Exception:
+                            raw_text = content.decode("utf-8", errors="ignore")
+                else:
+                    raw_text = content.decode("utf-8", errors="ignore")
             except Exception:
                 raw_text = f"Document content stream ({filename})"
     else:

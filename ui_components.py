@@ -373,7 +373,7 @@ div[data-testid="stForm"] {{
 div[data-baseweb="input"] {{
     border: 1px solid {C['border_dark']} !important;
     border-radius: 8px !important;
-    background: {C['surface']} !important;
+    background: #FFFFFF !important;
     transition: border-color 0.15s, box-shadow 0.15s;
 }}
 div[data-baseweb="input"]:focus-within {{
@@ -381,19 +381,35 @@ div[data-baseweb="input"]:focus-within {{
     box-shadow: 0 0 0 3px rgba(37,99,235,0.12) !important;
 }}
 div[data-baseweb="input"] > input {{
-    color: {C['text']} !important;
+    color: {C['navy']} !important;
+    background: #FFFFFF !important;
+    -webkit-text-fill-color: {C['navy']} !important;
     font-size: 0.875rem !important;
     padding: 8px 12px !important;
 }}
+/* Prevent browser autofill from overriding background to black */
+div[data-baseweb="input"] > input:-webkit-autofill,
+div[data-baseweb="input"] > input:-webkit-autofill:hover,
+div[data-baseweb="input"] > input:-webkit-autofill:focus,
+div[data-baseweb="input"] > input:-webkit-autofill:active {{
+    -webkit-box-shadow: 0 0 0 1000px #FFFFFF inset !important;
+    box-shadow: 0 0 0 1000px #FFFFFF inset !important;
+    -webkit-text-fill-color: {C['navy']} !important;
+    caret-color: {C['navy']} !important;
+    background-color: #FFFFFF !important;
+    transition: background-color 9999s ease-in-out 0s !important;
+}}
 .stTextInput > div > div > input,
 .stTextArea > div > div > textarea {{
-    color: {C['text']} !important;
+    color: {C['navy']} !important;
+    background: #FFFFFF !important;
+    -webkit-text-fill-color: {C['navy']} !important;
     font-size: 0.875rem !important;
 }}
 .stTextArea > div > div > textarea {{
     border: 1px solid {C['border_dark']} !important;
     border-radius: 8px !important;
-    background: {C['surface']} !important;
+    background: #FFFFFF !important;
     padding: 10px 12px !important;
     transition: border-color 0.15s, box-shadow 0.15s;
 }}
@@ -404,7 +420,8 @@ div[data-baseweb="input"] > input {{
 .stSelectbox [data-baseweb="select"] > div {{
     border: 1px solid {C['border_dark']} !important;
     border-radius: 8px !important;
-    background: {C['surface']} !important;
+    background: #FFFFFF !important;
+    color: {C['navy']} !important;
     font-size: 0.875rem !important;
 }}
 .stSelectbox label,
@@ -496,6 +513,44 @@ hr {{
 .stFileUploader > div:hover {{
     border-color: {C['blue']} !important;
     background: {C['blue_light']} !important;
+}}
+/* Uploaded file name row — white background, dark blue text */
+[data-testid="stFileUploaderFile"],
+[data-testid="stFileUploaderFileName"],
+.stFileUploader [data-testid="stFileUploaderFile"] * {{
+    background: #FFFFFF !important;
+    color: {C['navy']} !important;
+    -webkit-text-fill-color: {C['navy']} !important;
+}}
+
+/* ── 15b. Selectbox dropdown options ─────────────────────────────────────── */
+[data-baseweb="popover"] [role="option"],
+[data-baseweb="menu"] li,
+[data-baseweb="select"] [data-testid="stSelectboxVirtualDropdown"] * {{
+    background: #FFFFFF !important;
+    color: {C['navy']} !important;
+}}
+[data-baseweb="popover"] [role="option"]:hover {{
+    background: {C['blue_light']} !important;
+}}
+/* Selectbox selected value text */
+.stSelectbox [data-baseweb="select"] [data-testid="stMarkdownContainer"],
+.stSelectbox [data-baseweb="select"] span,
+.stSelectbox [data-baseweb="select"] div {{
+    color: {C['navy']} !important;
+    -webkit-text-fill-color: {C['navy']} !important;
+}}
+
+/* ── 15c. st.write / st.code / expander content — white bg, dark text ────── */
+[data-testid="stMarkdownContainer"] p,
+[data-testid="stMarkdownContainer"] strong,
+[data-testid="stMarkdownContainer"] code {{
+    color: {C['navy']} !important;
+    background: transparent !important;
+}}
+.stCodeBlock pre, .stCodeBlock code {{
+    background: {C['bg_subtle']} !important;
+    color: {C['navy']} !important;
 }}
 
 /* ── 16. Headings in main content ────────────────────────────────────────── */

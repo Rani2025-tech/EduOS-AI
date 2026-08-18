@@ -32,7 +32,16 @@ def parse_teacher_input(file_obj=None, raw_text_input: str = "", source_type: st
             source_type = "file"
             try:
                 content = file_obj.read()
-                raw_text = content.decode("utf-8", errors="ignore")
+                if filename.lower().endswith(".pdf"):
+                    try:
+                        import pdfplumber
+                        import io
+                        with pdfplumber.open(io.BytesIO(content)) as pdf:
+                            raw_text = "\n".join(page.extract_text() or "" for page in pdf.pages).strip()
+                    except Exception:
+                        raw_text = content.decode("utf-8", errors="ignore")
+                else:
+                    raw_text = content.decode("utf-8", errors="ignore")
             except Exception:
                 raw_text = f"Teacher file content ({filename})"
     else:

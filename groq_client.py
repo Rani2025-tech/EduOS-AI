@@ -18,7 +18,7 @@ except ImportError:
 class GroqAIClient:
     def __init__(self):
         self.api_key = os.getenv("GROQ_API_KEY", "").strip()
-        self.model = "llama-3.3-70b-versatile"
+        self.model = "openai/gpt-oss-120b"
         self.client = None
 
         if not self.api_key:

@@ -189,6 +189,7 @@ def process_and_save_document_input(file_obj=None, raw_text_input: str = "", doc
     """
     Processes user document input (Image / File / Raw Text) via Groq AI,
     validates with Pydantic, and saves audit trail document into Supabase.
+    Always appends to session state so the review queue works even when Supabase is offline.
     """
     doc_record, validated_student = parse_document_input(
         file_obj=file_obj,
@@ -197,9 +198,16 @@ def process_and_save_document_input(file_obj=None, raw_text_input: str = "", doc
     )
 
     if doc_record:
-        # Save audit record in Supabase
+        # Always append to session state first so UI shows it immediately
+        if "documents" not in st.session_state:
+            st.session_state.documents = []
+        # Avoid duplicates on rerun
+        existing_ids = {d.get("id") for d in st.session_state.documents}
+        if doc_record.get("id") not in existing_ids:
+            st.session_state.documents.insert(0, doc_record)
+
+        # Also persist to Supabase if connected
         db_instance.insert_document(doc_record)
-        refresh_from_db()
 
     return doc_record, validated_student
 
@@ -306,17 +314,21 @@ def pay_fee(student_id: str):
     refresh_from_db()
 
 def commit_doc(doc_id: str, updated_fields: dict):
-    """Commits reviewed document data and inserts student record into Supabase."""
-    db_instance.update_document(doc_id, {
-        "status": "committed",
-        "fields": updated_fields
-    })
+    """Commits reviewed document data and inserts student record into Supabase and session state."""
+    # Update document status in session state
+    for d in st.session_state.get("documents", []):
+        if d.get("id") == doc_id:
+            d["status"] = "committed"
+            d["fields"] = updated_fields
+            break
+
+    db_instance.update_document(doc_id, {"status": "committed", "fields": updated_fields})
 
     name = updated_fields.get("student_name", "User Enrolled Student")
     cls = updated_fields.get("class", "8A")
     parent = updated_fields.get("parent_name", "Parent")
 
-    stu_count = len(st.session_state.students) + 1
+    stu_count = len(st.session_state.get("students", [])) + 1
     new_student = {
         "id": f"STU-{100 + stu_count}",
         "name": name,
@@ -333,8 +345,12 @@ def commit_doc(doc_id: str, updated_fields: dict):
         "assigned_room": updated_fields.get("assigned_room", "Room 201")
     }
 
+    # Always update session state so dashboard reflects it immediately
+    if "students" not in st.session_state:
+        st.session_state.students = []
+    st.session_state.students.insert(0, new_student)
+
     db_instance.upsert_student(new_student)
-    refresh_from_db()
 
 def add_copilot_message(msg: dict):
     msg_to_save = {
