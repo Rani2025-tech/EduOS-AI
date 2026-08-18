@@ -658,6 +658,69 @@ if selected_tab == TAB_DASHBOARD:
                 st.session_state["_nav"] = TAB_COPILOT
                 st.rerun()
 
+        st.markdown("<div style='margin-top:8px;'></div>", unsafe_allow_html=True)
+
+        # ── Live Data Previews ────────────────────────────────────────────────
+        prev_left, prev_right = st.columns([3, 2])
+
+        with prev_left:
+            render_section_header("Student Records", "Live enrollment data — attendance, fees & risk levels.")
+            df_prev = pd.DataFrame(students_list)
+            if not df_prev.empty:
+                preview_cols = [c for c in ["name", "class", "roll_no", "attendance_pct", "fee_status", "fee_amount_due", "gpa", "risk_level"] if c in df_prev.columns]
+                st.dataframe(
+                    df_prev[preview_cols].rename(columns={
+                        "name": "Name", "class": "Class", "roll_no": "Roll No",
+                        "attendance_pct": "Attendance %", "fee_status": "Fee Status",
+                        "fee_amount_due": "Amount Due (₹)", "gpa": "GPA", "risk_level": "Risk"
+                    }),
+                    use_container_width=True, hide_index=True
+                )
+                if st.button("Open Full Data Layer →", key="prev_data_layer", use_container_width=True):
+                    st.session_state["_nav"] = TAB_DATA_LAYER
+                    st.rerun()
+            else:
+                render_empty_state("No student records", "Run the demo seed script to populate data.", "")
+
+        with prev_right:
+            render_section_header("Faculty Status", "Live teacher roster and availability.")
+            teachers_prev = st.session_state.get("teachers", [])
+            if teachers_prev:
+                df_tch = pd.DataFrame(teachers_prev)
+                tch_cols = [c for c in ["name", "subject", "assigned_classes", "status"] if c in df_tch.columns]
+                st.dataframe(
+                    df_tch[tch_cols].rename(columns={
+                        "name": "Teacher", "subject": "Subject",
+                        "assigned_classes": "Classes", "status": "Status"
+                    }),
+                    use_container_width=True, hide_index=True
+                )
+                if st.button("Open Teacher Roster →", key="prev_teachers", use_container_width=True):
+                    st.session_state["_nav"] = TAB_TEACHERS
+                    st.rerun()
+            else:
+                render_empty_state("No teacher records", "Run the demo seed script to populate data.", "")
+
+        st.markdown("<div style='margin-top:8px;'></div>", unsafe_allow_html=True)
+        render_section_header("Master Timetable", "Live schedule — conflicts and substitute assignments highlighted.")
+        df_tt_prev = pd.DataFrame(st.session_state.get("timetable", []))
+        if not df_tt_prev.empty:
+            tt_cols = [c for c in ["class_name", "period", "time", "subject", "teacher_name", "room", "has_conflict", "is_substitute", "substitute_teacher"] if c in df_tt_prev.columns]
+            st.dataframe(
+                df_tt_prev[tt_cols].rename(columns={
+                    "class_name": "Class", "period": "Period", "time": "Time",
+                    "subject": "Subject", "teacher_name": "Teacher", "room": "Room",
+                    "has_conflict": "Conflict?", "is_substitute": "Substitute?",
+                    "substitute_teacher": "Substitute Teacher"
+                }),
+                use_container_width=True, hide_index=True
+            )
+            if st.button("Open Timetable Engine →", key="prev_timetable", use_container_width=True):
+                st.session_state["_nav"] = TAB_TIMETABLE
+                st.rerun()
+        else:
+            render_empty_state("No timetable slots", "Run the demo seed script to populate data.", "")
+
     elif active_role == "teacher":
         render_page_header(
             "Teacher Dashboard",
