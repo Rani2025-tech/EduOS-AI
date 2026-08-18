@@ -149,10 +149,16 @@ if not is_authenticated():
     div[data-baseweb="input"] > input[type="password"],
     div[data-baseweb="input"] > input[type="password"]:focus,
     .stTextInput input[type="password"],
-    input[type="password"],
-    /* revealed password (eye icon toggles to type=text on 2nd input) */
-    .stTextInput:nth-of-type(2) input[type="text"],
-    div[data-testid="stTextInput"]:nth-of-type(2) input[type="text"] {
+    input[type="password"] {
+        color: #FFFFFF !important;
+        caret-color: #FFFFFF !important;
+        -webkit-text-fill-color: #FFFFFF !important;
+    }
+    /* Revealed password text (eye icon switches type=password -> type=text).
+       Target the password stTextInput specifically via its position in the form. */
+    div[data-testid="stForm"] div[data-testid="stTextInput"]:last-of-type input,
+    div[data-testid="stForm"] div[data-testid="stTextInput"]:last-of-type input[type="text"],
+    div[data-testid="stForm"] div[data-testid="stTextInput"]:last-of-type input[type="password"] {
         color: #FFFFFF !important;
         caret-color: #FFFFFF !important;
         -webkit-text-fill-color: #FFFFFF !important;
