@@ -36,7 +36,7 @@ TEST_ALERT_ID   = "SMOKE-TEST-ALT-001"
 TEST_AVAIL_ID   = "SMOKE-TEST-AV-001"
 TEST_USER_ID    = "SMOKE-TEST-USR-001"
 
-DEV_USERNAMES = ["dev_admin", "dev_teacher", "dev_student", "dev_parent"]
+DEV_USERNAMES = os.getenv("DEV_USERNAMES", "dev_admin,dev_teacher,dev_student,dev_parent").split(",")
 
 REQUIRED_TABLES = [
     "students",
@@ -221,10 +221,11 @@ def run_verification():
     # Users table write probe (bcrypt hash of a throwaway test password)
     try:
         from auth import hash_password
+        _smoke_pw = os.getenv("SMOKE_TEST_PASSWORD", os.urandom(16).hex())
         test_user = {
             "id": TEST_USER_ID,
             "username": "smoke_test_user",
-            "password_hash": hash_password("smoke-test-only-not-a-real-password"),
+            "password_hash": hash_password(_smoke_pw),
             "role": "admin",
             "linked_id": None,
             "is_active": True,

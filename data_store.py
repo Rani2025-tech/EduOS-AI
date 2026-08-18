@@ -101,51 +101,29 @@ def is_authenticated() -> bool:
 
 
 def init_session_state():
-    """Initializes session state directly from real Supabase DB. No hardcoded dummy data."""
-    if "db_connected" not in st.session_state:
-        st.session_state.db_connected = db_instance.is_supabase_active
+    """Fetches fresh data from Supabase on every login. Called once after login_user() succeeds."""
+    st.session_state.db_connected = db_instance.is_supabase_active
+    st.session_state.students = db_instance.get_students()
+    st.session_state.teachers = db_instance.get_teachers()
+    st.session_state.teacher_availability = db_instance.get_teacher_availability()
+    st.session_state.timetable = db_instance.get_timetable()
+    st.session_state.documents = db_instance.get_documents()
+    st.session_state.alerts = db_instance.get_alerts()
+    st.session_state.copilot_messages = db_instance.get_copilot_messages()
 
-    if "students" not in st.session_state:
-        st.session_state.students = db_instance.get_students()
-        
-    if "teachers" not in st.session_state:
-        st.session_state.teachers = db_instance.get_teachers()
-
-    if "teacher_availability" not in st.session_state:
-        st.session_state.teacher_availability = db_instance.get_teacher_availability()
-
-    if "timetable" not in st.session_state:
-        st.session_state.timetable = db_instance.get_timetable()
-        
-    if "documents" not in st.session_state:
-        st.session_state.documents = db_instance.get_documents()
-
-    if "alerts" not in st.session_state:
-        st.session_state.alerts = db_instance.get_alerts()
-
-    if "insights" not in st.session_state:
-        # Prefer live DB insights; fall back to calculated insights when DB is unavailable
-        db_insights = db_instance.get_insights()
-        if db_insights:
-            st.session_state.insights = db_insights
-        else:
-            st.session_state.insights = generate_all_insights(
-                students=st.session_state.get("students", []),
-                teachers=st.session_state.get("teachers", []),
-                teacher_availability=st.session_state.get("teacher_availability", []),
-                timetable=st.session_state.get("timetable", []),
-                documents=st.session_state.get("documents", []),
-            )
-
-    if "copilot_messages" not in st.session_state:
-        st.session_state.copilot_messages = db_instance.get_copilot_messages()
-
-    if "staffing_report" not in st.session_state:
-        st.session_state.staffing_report = calculate_staffing_report(
-            teachers=st.session_state.get("teachers", []),
-            teacher_availability=st.session_state.get("teacher_availability", []),
-            timetable=st.session_state.get("timetable", []),
-        )
+    db_insights = db_instance.get_insights()
+    st.session_state.insights = db_insights if db_insights else generate_all_insights(
+        students=st.session_state.get("students", []),
+        teachers=st.session_state.get("teachers", []),
+        teacher_availability=st.session_state.get("teacher_availability", []),
+        timetable=st.session_state.get("timetable", []),
+        documents=st.session_state.get("documents", []),
+    )
+    st.session_state.staffing_report = calculate_staffing_report(
+        teachers=st.session_state.get("teachers", []),
+        teacher_availability=st.session_state.get("teacher_availability", []),
+        timetable=st.session_state.get("timetable", []),
+    )
 
 def refresh_from_db():
     """Refetches real live records from Supabase database."""

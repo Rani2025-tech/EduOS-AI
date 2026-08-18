@@ -502,7 +502,16 @@ if selected_tab == TAB_DASHBOARD:
                 st.rerun()
 
         # ── KPI Cards ─────────────────────────────────────────────────────────
-        k1, k2, k3, k4 = st.columns(4)
+        _sr = st.session_state.get("staffing_report") or calculate_staffing_report(
+            teachers=st.session_state.get("teachers", []),
+            teacher_availability=st.session_state.get("teacher_availability", []),
+            timetable=st.session_state.get("timetable", []),
+        )
+        _score = _sr.get("staffing_pressure_score", 0)
+        _level = _sr.get("staffing_pressure_level", "LOW")
+        _staff_status = "good" if _level == "LOW" else ("warning" if _level == "MODERATE" else "danger")
+
+        k1, k2, k3, k4, k5 = st.columns(5)
         with k1:
             render_kpi_card(
                 "Students Enrolled",
@@ -531,6 +540,13 @@ if selected_tab == TAB_DASHBOARD:
                 str(pending_docs),
                 "Awaiting human review" if pending_docs else "Queue is clear",
                 "warning" if pending_docs > 0 else "good",
+            )
+        with k5:
+            render_kpi_card(
+                "Staffing Pressure",
+                f"{_score}/100",
+                f"{_level} — View Insights for details",
+                _staff_status,
             )
 
         st.markdown("<div style='margin-top:8px;'></div>", unsafe_allow_html=True)
