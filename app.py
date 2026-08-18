@@ -145,10 +145,14 @@ if not is_authenticated():
     div[data-baseweb="input"] > input::placeholder {
         color: #A0AEC0 !important;
     }
-    /* Password bullet dots — force dark color so they show on white bg */
-    div[data-baseweb="input"] > input[type="password"] {
+    /* Password bullet dots -- force dark color so they show on white bg */
+    div[data-baseweb="input"] > input[type="password"],
+    div[data-baseweb="input"] > input[type="password"]:focus,
+    .stTextInput input[type="password"],
+    input[type="password"] {
         color: #17365D !important;
-        -webkit-text-security: disc;
+        caret-color: #17365D !important;
+        -webkit-text-fill-color: #17365D !important;
     }
 
     /* ── Primary button — enterprise blue ────────────────────────────────── */
