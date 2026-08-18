@@ -660,17 +660,11 @@ def render_empty_state(title: str, description: str, icon: str = "") -> None:
         if icon else ""
     )
     st.markdown(
-        f"""
-<div style="background:{C['surface']};border:1px solid {C['border']};
-            border-radius:8px;padding:40px 24px;text-align:center;
-            margin:8px 0;box-shadow:0 1px 2px rgba(0,0,0,0.04);">
-    {icon_html}
-    <div style="font-size:0.95rem;font-weight:600;
-                color:{C['text_muted']};margin-bottom:6px;">{title}</div>
-    <div style="font-size:0.82rem;color:{C['text_body']};
-                max-width:360px;margin:0 auto;line-height:1.5;">{description}</div>
-</div>
-""",
+        f'<div style="background:{C["surface"]};border:1px solid {C["border"]};border-radius:8px;padding:40px 24px;text-align:center;margin:8px 0;box-shadow:0 1px 2px rgba(0,0,0,0.04);">'
+        f'{icon_html}'
+        f'<div style="font-size:0.95rem;font-weight:600;color:{C["text_muted"]};margin-bottom:6px;">{title}</div>'
+        f'<div style="font-size:0.82rem;color:{C["text_body"]};max-width:360px;margin:0 auto;line-height:1.5;">{description}</div>'
+        f'</div>',
         unsafe_allow_html=True,
     )
 

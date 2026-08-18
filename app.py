@@ -50,7 +50,7 @@ st.set_page_config(
     page_title="EduOS AI — Autonomous School Operating System",
     page_icon="⚡",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="collapsed"
 )
 
 # ── 2. Bootstrap auth + CSS ───────────────────────────────────────────────────
@@ -59,78 +59,297 @@ inject_global_styles()
 
 # ── 3. Login gate ────────────────────────────────────────────────────────────
 if not is_authenticated():
-    col_l, col_center, col_r = st.columns([1, 1.15, 1])
+    # ── Login page scoped CSS ────────────────────────────────────────────────
+    st.markdown("""
+    <style>
+    /* Hide Streamlit sidebar and top chrome on login page */
+    section[data-testid="stSidebar"] { display: none !important; }
+    header[data-testid="stHeader"] { display: none !important; }
+    .main .block-container {
+        padding: 0 !important;
+        max-width: 100% !important;
+    }
+    /* Remove default form card shadow so our custom wrapper controls it */
+    div[data-testid="stForm"] {
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        padding: 0 !important;
+    }
+    /* Input label overrides for login panel */
+    .stTextInput label {
+        font-size: 0.72rem !important;
+        font-weight: 700 !important;
+        color: #5B6B7F !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.07em !important;
+    }
+    /* Capability card hover lift — pure CSS, no JS */
+    .edu-cap-card {
+        background: rgba(255,255,255,0.055);
+        border: 1px solid rgba(255,255,255,0.10);
+        border-radius: 10px;
+        padding: 16px 18px;
+        transition: background 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
+        cursor: default;
+    }
+    .edu-cap-card:hover {
+        background: rgba(96,165,250,0.12);
+        border-color: rgba(96,165,250,0.35);
+        transform: translateY(-2px);
+    }
+    /* Pulse animation for the AI-ready dot */
+    @keyframes edu-pulse {
+        0%   { opacity: 1; }
+        50%  { opacity: 0.4; }
+        100% { opacity: 1; }
+    }
+    .edu-pulse-dot {
+        display: inline-block;
+        width: 7px; height: 7px;
+        border-radius: 50%;
+        background: #34D399;
+        animation: edu-pulse 2.4s ease-in-out infinite;
+    }
 
-    with col_center:
-        st.markdown(
-            """
-            <div style="text-align: center; margin-top: 36px; margin-bottom: 24px;">
-                <div style="display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 10px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(37,99,235,0.08);">
-                    <span style="font-size: 1.35rem; line-height: 1;">⚡</span>
+    /* ── Right panel: column background ────────────────────────────────── */
+    /* Paint the right Streamlit column directly via its data-testid wrapper */
+    [data-testid="column"]:last-child {
+        background: #EEF2F7 !important;
+        min-height: 100vh;
+    }
+
+    /* ── Input field refinements (login page only) ───────────────────────── */
+    /* Normal state */
+    div[data-baseweb="input"] {
+        border: 1.5px solid #D1D9E6 !important;
+        border-radius: 8px !important;
+        background: #FFFFFF !important;
+        transition: border-color 0.18s ease, box-shadow 0.18s ease !important;
+    }
+    /* Hover state */
+    div[data-baseweb="input"]:hover {
+        border-color: #93C5FD !important;
+    }
+    /* Focus state */
+    div[data-baseweb="input"]:focus-within {
+        border-color: #2563EB !important;
+        box-shadow: 0 0 0 3px rgba(37,99,235,0.10) !important;
+    }
+    div[data-baseweb="input"] > input {
+        font-size: 0.9rem !important;
+        color: #17365D !important;
+        padding: 10px 14px !important;
+        background: transparent !important;
+    }
+    div[data-baseweb="input"] > input::placeholder {
+        color: #A0AEC0 !important;
+    }
+
+    /* ── Primary button — enterprise blue ────────────────────────────────── */
+    .stButton > button[kind="primary"],
+    button[kind="primaryFormSubmit"] {
+        background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%) !important;
+        color: #FFFFFF !important;
+        border: none !important;
+        border-radius: 8px !important;
+        font-size: 0.9rem !important;
+        font-weight: 700 !important;
+        letter-spacing: 0.01em !important;
+        padding: 12px 20px !important;
+        box-shadow: 0 2px 8px rgba(37,99,235,0.25) !important;
+        transition: background 0.18s ease, box-shadow 0.18s ease, transform 0.12s ease !important;
+    }
+    .stButton > button[kind="primary"]:hover,
+    button[kind="primaryFormSubmit"]:hover {
+        background: linear-gradient(135deg, #1D4ED8 0%, #1E40AF 100%) !important;
+        box-shadow: 0 4px 14px rgba(37,99,235,0.35) !important;
+        transform: translateY(-1px) !important;
+    }
+    .stButton > button[kind="primary"]:active,
+    button[kind="primaryFormSubmit"]:active {
+        transform: translateY(0px) !important;
+        box-shadow: 0 1px 4px rgba(37,99,235,0.2) !important;
+    }
+
+    /* ── Auth error alert — polished enterprise style ────────────────────── */
+    div[data-testid="stAlert"][data-baseweb="notification"] {
+        border-radius: 8px !important;
+        border-left-width: 4px !important;
+        font-size: 0.83rem !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+    col_left, col_right = st.columns([11, 9])
+
+    # ── LEFT PANEL — Intelligence Command Center presentation ────────────────
+    with col_left:
+        st.markdown("""
+        <div style="min-height:100vh;background:linear-gradient(160deg,#0A1628 0%,#0F2044 35%,#17365D 70%,#1A3F6F 100%);padding:44px 48px 36px;display:flex;flex-direction:column;justify-content:space-between;box-sizing:border-box;position:relative;overflow:hidden;">
+            <div style="position:absolute;top:-80px;right:-80px;width:320px;height:320px;background:radial-gradient(circle,rgba(37,99,235,0.12) 0%,transparent 70%);pointer-events:none;"></div>
+            <div style="position:absolute;bottom:60px;left:-60px;width:240px;height:240px;background:radial-gradient(circle,rgba(96,165,250,0.07) 0%,transparent 70%);pointer-events:none;"></div>
+            <div style="position:relative;z-index:1;">
+                <div style="display:flex;align-items:center;gap:12px;margin-bottom:40px;">
+                    <div style="width:38px;height:38px;background:linear-gradient(135deg,rgba(37,99,235,0.4),rgba(96,165,250,0.2));border:1px solid rgba(96,165,250,0.4);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1.15rem;box-shadow:0 0 16px rgba(37,99,235,0.25);">&#9889;</div>
+                    <div>
+                        <div style="font-size:1.05rem;font-weight:800;color:#FFFFFF;letter-spacing:-0.01em;line-height:1;">EduOS <span style="color:#60A5FA;">AI</span></div>
+                        <div style="font-size:0.6rem;font-weight:600;color:rgba(255,255,255,0.38);letter-spacing:0.14em;text-transform:uppercase;margin-top:3px;">School Operations Platform</div>
+                    </div>
                 </div>
-                <div style="font-size: 1.75rem; font-weight: 800; color: #17365D; letter-spacing: -0.03em; line-height: 1.2;">
-                    EduOS <span style="color: #2563EB;">AI</span>
+                <div style="margin-bottom:28px;">
+                    <div style="font-size:2.15rem;font-weight:800;color:#FFFFFF;letter-spacing:-0.03em;line-height:1.18;margin-bottom:12px;text-shadow:0 2px 12px rgba(0,0,0,0.3);">THE INTELLIGENT<br>OPERATING SYSTEM<br><span style="color:#60A5FA;background:linear-gradient(90deg,#60A5FA,#93C5FD);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">FOR SCHOOLS.</span></div>
+                    <div style="font-size:0.88rem;color:rgba(255,255,255,0.58);line-height:1.65;max-width:400px;">One AI-powered command center that transforms everyday school operations.</div>
                 </div>
-                <div style="font-size: 0.82rem; font-weight: 500; color: #5B6B7F; margin-top: 4px;">
-                    School Operations Platform
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:24px;">
+                    <div class="edu-cap-card"><div style="font-size:1rem;margin-bottom:7px;line-height:1;">&#128196;</div><div style="font-size:0.8rem;font-weight:700;color:#FFFFFF;margin-bottom:4px;letter-spacing:-0.01em;">AI Document Processing</div><div style="font-size:0.72rem;color:rgba(255,255,255,0.5);line-height:1.55;">Extract structured data from forms and records automatically.</div></div>
+                    <div class="edu-cap-card"><div style="font-size:1rem;margin-bottom:7px;line-height:1;">&#129504;</div><div style="font-size:0.8rem;font-weight:700;color:#FFFFFF;margin-bottom:4px;letter-spacing:-0.01em;">Smart Timetable</div><div style="font-size:0.72rem;color:rgba(255,255,255,0.5);line-height:1.55;">Detect scheduling conflicts and generate optimized allocations.</div></div>
+                    <div class="edu-cap-card"><div style="font-size:1rem;margin-bottom:7px;line-height:1;">&#128202;</div><div style="font-size:0.8rem;font-weight:700;color:#FFFFFF;margin-bottom:4px;letter-spacing:-0.01em;">Predictive Resources</div><div style="font-size:0.72rem;color:rgba(255,255,255,0.5);line-height:1.55;">Anticipate staffing and operational bottlenecks before they escalate.</div></div>
+                    <div class="edu-cap-card"><div style="font-size:1rem;margin-bottom:7px;line-height:1;">&#10003;</div><div style="font-size:0.8rem;font-weight:700;color:#FFFFFF;margin-bottom:4px;letter-spacing:-0.01em;">Automated Attendance</div><div style="font-size:0.72rem;color:rgba(255,255,255,0.5);line-height:1.55;">Connect attendance data directly with the centralized ERP.</div></div>
+                </div>
+                <div style="background:rgba(0,0,0,0.22);border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:16px 20px;margin-bottom:18px;">
+                    <div style="font-size:0.6rem;font-weight:700;color:rgba(255,255,255,0.3);letter-spacing:0.13em;text-transform:uppercase;margin-bottom:12px;">How EduOS AI Centralizes School Operations</div>
+                    <div style="display:flex;align-items:center;flex-wrap:nowrap;overflow-x:auto;overflow-y:visible;">
+                        <div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0;">
+                            <div style="font-size:0.68rem;color:rgba(255,255,255,0.45);background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);border-radius:5px;padding:4px 10px;white-space:nowrap;">Documents</div>
+                            <div style="font-size:0.68rem;color:rgba(255,255,255,0.45);background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);border-radius:5px;padding:4px 10px;white-space:nowrap;">Timetable</div>
+                            <div style="font-size:0.68rem;color:rgba(255,255,255,0.45);background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);border-radius:5px;padding:4px 10px;white-space:nowrap;">Attendance</div>
+                            <div style="font-size:0.68rem;color:rgba(255,255,255,0.45);background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);border-radius:5px;padding:4px 10px;white-space:nowrap;">Resources</div>
+                        </div>
+                        <div style="display:flex;flex-direction:column;gap:6px;padding:0 6px;flex-shrink:0;">
+                            <div style="font-size:0.65rem;color:rgba(96,165,250,0.5);line-height:1.9;">&#9472;&#9472;&#9484;</div>
+                            <div style="font-size:0.65rem;color:rgba(96,165,250,0.5);line-height:1.9;">&#9472;&#9472;&#9508;</div>
+                            <div style="font-size:0.65rem;color:rgba(96,165,250,0.5);line-height:1.9;">&#9472;&#9472;&#9508;</div>
+                            <div style="font-size:0.65rem;color:rgba(96,165,250,0.5);line-height:1.9;">&#9472;&#9472;&#9496;</div>
+                        </div>
+                        <div style="background:linear-gradient(135deg,rgba(37,99,235,0.35),rgba(96,165,250,0.2));border:1px solid rgba(96,165,250,0.4);border-radius:8px;padding:10px 14px;text-align:center;flex-shrink:0;box-shadow:0 0 18px rgba(37,99,235,0.2);">
+                            <div style="font-size:0.75rem;font-weight:800;color:#FFFFFF;letter-spacing:-0.01em;line-height:1.2;">EduOS<br><span style="color:#60A5FA;">AI</span></div>
+                        </div>
+                        <div style="font-size:0.75rem;color:rgba(96,165,250,0.6);padding:0 6px;flex-shrink:0;">&#9472;&#9472;&#8594;</div>
+                        <div style="background:rgba(52,211,153,0.1);border:1px solid rgba(52,211,153,0.25);border-radius:8px;padding:10px 12px;text-align:center;flex-shrink:0;">
+                            <div style="font-size:0.68rem;font-weight:700;color:#34D399;line-height:1.4;">School<br>Operations</div>
+                        </div>
+                    </div>
+                </div>
+                <div style="background:rgba(0,0,0,0.28);border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:15px 18px;">
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+                        <div style="display:flex;align-items:center;gap:7px;">
+                            <span class="edu-pulse-dot"></span>
+                            <span style="font-size:0.6rem;font-weight:700;color:rgba(255,255,255,0.4);letter-spacing:0.14em;text-transform:uppercase;">EduOS Intelligence</span>
+                        </div>
+                        <span style="font-size:0.62rem;font-weight:700;color:#34D399;letter-spacing:0.08em;">&#9679; AI SYSTEM READY</span>
+                    </div>
+                    <div style="display:flex;flex-direction:column;gap:7px;">
+                        <div style="display:flex;justify-content:space-between;align-items:center;"><span style="font-size:0.72rem;color:rgba(255,255,255,0.45);">Document Intelligence</span><span style="font-size:0.62rem;font-weight:700;color:#34D399;background:rgba(52,211,153,0.1);border:1px solid rgba(52,211,153,0.22);border-radius:3px;padding:2px 8px;letter-spacing:0.05em;">READY</span></div>
+                        <div style="display:flex;justify-content:space-between;align-items:center;"><span style="font-size:0.72rem;color:rgba(255,255,255,0.45);">Timetable Optimization</span><span style="font-size:0.62rem;font-weight:700;color:#34D399;background:rgba(52,211,153,0.1);border:1px solid rgba(52,211,153,0.22);border-radius:3px;padding:2px 8px;letter-spacing:0.05em;">READY</span></div>
+                        <div style="display:flex;justify-content:space-between;align-items:center;"><span style="font-size:0.72rem;color:rgba(255,255,255,0.45);">Resource Prediction</span><span style="font-size:0.62rem;font-weight:700;color:#34D399;background:rgba(52,211,153,0.1);border:1px solid rgba(52,211,153,0.22);border-radius:3px;padding:2px 8px;letter-spacing:0.05em;">READY</span></div>
+                        <div style="display:flex;justify-content:space-between;align-items:center;"><span style="font-size:0.72rem;color:rgba(255,255,255,0.45);">Attendance Automation</span><span style="font-size:0.62rem;font-weight:700;color:#34D399;background:rgba(52,211,153,0.1);border:1px solid rgba(52,211,153,0.22);border-radius:3px;padding:2px 8px;letter-spacing:0.05em;">READY</span></div>
+                    </div>
                 </div>
             </div>
-            """,
-            unsafe_allow_html=True,
-        )
+            <div style="position:relative;z-index:1;border-top:1px solid rgba(255,255,255,0.08);padding-top:18px;margin-top:24px;">
+                <div style="font-size:0.72rem;font-weight:800;color:rgba(255,255,255,0.55);letter-spacing:0.16em;text-transform:uppercase;margin-bottom:5px;">ONE LOGIN. ONE COMMAND CENTER.</div>
+                <div style="font-size:0.7rem;color:rgba(255,255,255,0.3);letter-spacing:0.02em;">Connected school operations. Intelligent decisions. Minimal clicks.</div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
 
-        with st.form("login_form", clear_on_submit=False):
-            st.markdown(
-                """
-                <div style="margin-bottom: 18px;">
-                    <div style="font-size: 1.1rem; font-weight: 700; color: #17365D; letter-spacing: -0.01em;">
-                        Welcome back
+    # ── RIGHT PANEL — Premium login card ───────────────────────────────────────
+    with col_right:
+        # Top padding to push card into visual center
+        st.markdown("<div style='height:8vh;'></div>", unsafe_allow_html=True)
+
+        # Card column — narrow, centered
+        _, card_col, _ = st.columns([1, 10, 1])
+        with card_col:
+
+            # ── Unified card: header + form fields + footer in one shell ──────
+            with st.form("login_form", clear_on_submit=False):
+                st.markdown("""
+                <div style="background:#FFFFFF;border:1px solid #DDE4EF;border-radius:18px;padding:36px 36px 8px;box-shadow:0 4px 24px rgba(15,32,68,0.08),0 1px 4px rgba(15,32,68,0.04);box-sizing:border-box;margin-bottom:0;">
+                    <div style="display:flex;align-items:center;gap:7px;margin-bottom:20px;">
+                        <span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#2563EB;box-shadow:0 0 6px rgba(37,99,235,0.5);"></span>
+                        <span style="font-size:0.62rem;font-weight:700;color:#2563EB;letter-spacing:0.14em;text-transform:uppercase;">School Operations</span>
                     </div>
-                    <div style="font-size: 0.82rem; color: #5B6B7F; margin-top: 2px;">
-                        Sign in to your account to continue
+                    <div style="margin-bottom:24px;">
+                        <div style="font-size:1.6rem;font-weight:800;color:#17365D;letter-spacing:-0.03em;line-height:1.2;margin-bottom:6px;">Welcome back</div>
+                        <div style="font-size:0.84rem;color:#5B6B7F;line-height:1.55;">Access your school operations command center.</div>
+                    </div>
+                    <div style="height:1px;background:#EEF2F7;margin-bottom:20px;"></div>
+                </div>
+                """, unsafe_allow_html=True)
+
+                username_input = st.text_input(
+                    "Username",
+                    placeholder="Enter your username",
+                    key="login_username",
+                )
+                password_input = st.text_input(
+                    "Password",
+                    type="password",
+                    placeholder="Enter your password",
+                    key="login_password",
+                )
+
+                st.markdown("<div style='margin-top:10px;'></div>", unsafe_allow_html=True)
+                submitted = st.form_submit_button(
+                    "Enter Command Center  →",
+                    type="primary",
+                    use_container_width=True,
+                )
+
+                if submitted:
+                    if login_user(username_input, password_input):
+                        init_session_state()
+                        st.rerun()
+                    else:
+                        st.error(st.session_state.get("auth_error", "Login failed."))
+
+            # ── Supabase / system warning (conditional — logic unchanged) ────────
+            if not db_instance.is_supabase_active:
+                st.markdown("""
+                <div style="
+                    margin-top:12px;
+                    background:#FFFBEB;
+                    border:1px solid #FDE68A;
+                    border-left:4px solid #D97706;
+                    border-radius:10px;
+                    padding:14px 16px;
+                    display:flex;
+                    align-items:flex-start;
+                    gap:12px;
+                ">
+                    <span style="font-size:1.05rem;flex-shrink:0;margin-top:1px;">⚠</span>
+                    <div>
+                        <div style="
+                            font-size:0.72rem;font-weight:800;
+                            color:#92400E;letter-spacing:0.08em;
+                            text-transform:uppercase;margin-bottom:4px;
+                        ">System Configuration</div>
+                        <div style="font-size:0.78rem;color:#B45309;line-height:1.55;">
+                            School data services are currently unavailable.
+                            Please verify the system configuration before signing in.
+                        </div>
                     </div>
                 </div>
-                """,
-                unsafe_allow_html=True,
-            )
+                """, unsafe_allow_html=True)
 
-            username_input = st.text_input(
-                "Username",
-                placeholder="Enter your username",
-                key="login_username",
-            )
-            password_input = st.text_input(
-                "Password",
-                type="password",
-                placeholder="Enter your password",
-                key="login_password",
-            )
-
-            st.markdown("<div style='margin-top: 6px;'></div>", unsafe_allow_html=True)
-            submitted = st.form_submit_button("Sign In", type="primary", use_container_width=True)
-
-            if submitted:
-                if login_user(username_input, password_input):
-                    init_session_state()
-                    st.rerun()
-                else:
-                    st.error(st.session_state.get("auth_error", "Login failed."))
-
-        if not db_instance.is_supabase_active:
-            st.markdown("<div style='margin-top: 12px;'></div>", unsafe_allow_html=True)
-            st.warning(
-                "Supabase is not connected. Fix your `.env` configuration before logging in.",
-                icon="⚠️",
-            )
-
-        st.markdown(
-            """
-            <div style="text-align: center; margin-top: 20px; font-size: 0.75rem; color: #7A8797;">
-                🔒 Role-based access control &nbsp;·&nbsp; Enterprise secure session
+            # ── Security footer ────────────────────────────────────────────────
+            st.markdown("""
+            <div style="
+                margin-top:20px;
+                padding-top:16px;
+                border-top:1px solid #DDE4EF;
+                text-align:center;
+            ">
+                <div style="font-size:0.78rem;font-weight:600;color:#5B6B7F;margin-bottom:5px;">
+                    🔒 Secure role-based access
+                </div>
+                <div style="font-size:0.7rem;color:#9AABB8;line-height:1.5;max-width:300px;margin:0 auto;">
+                    Your school data stays within the authorized operational environment.
+                </div>
             </div>
-            """,
-            unsafe_allow_html=True,
-        )
+            """, unsafe_allow_html=True)
 
     st.stop()
 
