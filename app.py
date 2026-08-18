@@ -149,7 +149,10 @@ if not is_authenticated():
     div[data-baseweb="input"] > input[type="password"],
     div[data-baseweb="input"] > input[type="password"]:focus,
     .stTextInput input[type="password"],
-    input[type="password"] {
+    input[type="password"],
+    /* revealed password (eye icon toggles to type=text on 2nd input) */
+    .stTextInput:nth-of-type(2) input[type="text"],
+    div[data-testid="stTextInput"]:nth-of-type(2) input[type="text"] {
         color: #FFFFFF !important;
         caret-color: #FFFFFF !important;
         -webkit-text-fill-color: #FFFFFF !important;
