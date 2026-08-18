@@ -124,7 +124,7 @@ if not is_authenticated():
     div[data-baseweb="input"] {
         border: 1.5px solid #D1D9E6 !important;
         border-radius: 8px !important;
-        background: #FFFFFF !important;
+        background: #F3F4F6 !important;
         transition: border-color 0.18s ease, box-shadow 0.18s ease !important;
     }
     /* Hover state */
@@ -138,7 +138,7 @@ if not is_authenticated():
     }
     div[data-baseweb="input"] > input {
         font-size: 0.9rem !important;
-        color: #17365D !important;
+        color: #111111 !important;
         padding: 10px 14px !important;
         background: transparent !important;
     }
@@ -150,9 +150,9 @@ if not is_authenticated():
     div[data-baseweb="input"] > input[type="password"]:focus,
     .stTextInput input[type="password"],
     input[type="password"] {
-        color: #17365D !important;
-        caret-color: #17365D !important;
-        -webkit-text-fill-color: #17365D !important;
+        color: #111111 !important;
+        caret-color: #111111 !important;
+        -webkit-text-fill-color: #111111 !important;
     }
 
     /* ── Primary button — enterprise blue ────────────────────────────────── */
