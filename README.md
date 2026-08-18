@@ -1,11 +1,15 @@
 # EduOS AI — Autonomous School Operating System
 > **Transforming fragmented school operations into an intelligent, proactive operating system with Groq AI, Google OR-Tools, and Supabase.**
 
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-Streamlit%20Cloud-FF4B4B?style=for-the-badge&logo=streamlit&logoColor=white)](https://eduos-ai-9ccfhasj4dkbznvatlpc7a.streamlit.app/)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://www.python.org/)
 [![Streamlit](https://img.shields.io/badge/Streamlit-1.30%2B-FF4B4B.svg)](https://streamlit.io/)
 [![Database](https://img.shields.io/badge/Supabase-PostgreSQL-3ECF8E.svg)](https://supabase.com/)
 [![LLM Engine](https://img.shields.io/badge/Groq-Llama--3.3--70B-F55036.svg)](https://groq.com/)
 [![Solver](https://img.shields.io/badge/Google-OR--Tools%20CP--SAT-4285F4.svg)](https://developers.google.com/optimization)
+
+> 🚀 **Live Demo:** [https://eduos-ai-9ccfhasj4dkbznvatlpc7a.streamlit.app/](https://eduos-ai-9ccfhasj4dkbznvatlpc7a.streamlit.app/)  
+> **Demo Login:** Username: `dev_admin` | Password: `password123`
 
 ---
 
