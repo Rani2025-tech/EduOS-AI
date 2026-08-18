@@ -150,9 +150,9 @@ if not is_authenticated():
     div[data-baseweb="input"] > input[type="password"]:focus,
     .stTextInput input[type="password"],
     input[type="password"] {
-        color: #111111 !important;
-        caret-color: #111111 !important;
-        -webkit-text-fill-color: #111111 !important;
+        color: #FFFFFF !important;
+        caret-color: #FFFFFF !important;
+        -webkit-text-fill-color: #FFFFFF !important;
     }
 
     /* ── Primary button — enterprise blue ────────────────────────────────── */
