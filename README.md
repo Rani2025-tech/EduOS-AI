@@ -13,6 +13,14 @@
 
 ---
 
+## 🎬 Demo Video
+
+[![EduOS AI — Demo Video](https://img.youtube.com/vi/CYIu5YFX_zM/maxresdefault.jpg)](https://www.youtube.com/watch?v=CYIu5YFX_zM)
+
+> Click the thumbnail above to watch the full demo walkthrough.
+
+---
+
 ## 1. Problem Statement
 
 Modern educational institutions rely on disconnected administrative systems and manual workflows:
