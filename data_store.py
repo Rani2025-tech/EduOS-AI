@@ -112,13 +112,18 @@ def init_session_state():
     st.session_state.copilot_messages = db_instance.get_copilot_messages()
 
     db_insights = db_instance.get_insights()
-    st.session_state.insights = db_insights if db_insights else generate_all_insights(
-        students=st.session_state.get("students", []),
-        teachers=st.session_state.get("teachers", []),
-        teacher_availability=st.session_state.get("teacher_availability", []),
-        timetable=st.session_state.get("timetable", []),
-        documents=st.session_state.get("documents", []),
-    )
+    if db_insights:
+        st.session_state.insights = db_insights
+    else:
+        fresh = generate_all_insights(
+            students=st.session_state.get("students", []),
+            teachers=st.session_state.get("teachers", []),
+            teacher_availability=st.session_state.get("teacher_availability", []),
+            timetable=st.session_state.get("timetable", []),
+            documents=st.session_state.get("documents", []),
+        )
+        st.session_state.insights = fresh
+        db_instance.upsert_insights(fresh)
     st.session_state.staffing_report = calculate_staffing_report(
         teachers=st.session_state.get("teachers", []),
         teacher_availability=st.session_state.get("teacher_availability", []),
@@ -133,14 +138,15 @@ def refresh_from_db():
     st.session_state.timetable = db_instance.get_timetable()
     st.session_state.documents = db_instance.get_documents()
     st.session_state.alerts = db_instance.get_alerts()
-    db_insights = db_instance.get_insights()
-    st.session_state.insights = db_insights if db_insights else generate_all_insights(
+    fresh = generate_all_insights(
         students=st.session_state.get("students", []),
         teachers=st.session_state.get("teachers", []),
         teacher_availability=st.session_state.get("teacher_availability", []),
         timetable=st.session_state.get("timetable", []),
         documents=st.session_state.get("documents", []),
     )
+    st.session_state.insights = fresh
+    db_instance.upsert_insights(fresh)
     st.session_state.staffing_report = calculate_staffing_report(
         teachers=st.session_state.get("teachers", []),
         teacher_availability=st.session_state.get("teacher_availability", []),
@@ -253,6 +259,10 @@ def toggle_teacher(teacher_id: str):
         # Run Google OR-Tools Solver to reassign free substitutes for affected slots
         if st.session_state.timetable:
             optimized_slots, warnings = solve_timetable_reassignment()
+            if warnings:
+                st.session_state["solver_warnings"] = warnings
+            else:
+                st.session_state.pop("solver_warnings", None)
 
 def solve_timetable_reassignment():
     """Runs OR-Tools CP-SAT solver over current schedule to reassign substitutes for absent teachers."""
@@ -314,16 +324,41 @@ def pay_fee(student_id: str):
     refresh_from_db()
 
 def commit_doc(doc_id: str, updated_fields: dict):
-    """Commits reviewed document data and inserts student record into Supabase and session state."""
-    # Update document status in session state
+    """Commits reviewed document. Admission forms create a student record;
+    fee receipts update fee status; leave applications record an alert."""
+    # Find the doc to get its type
+    doc_type = "admission_form"
     for d in st.session_state.get("documents", []):
         if d.get("id") == doc_id:
             d["status"] = "committed"
             d["fields"] = updated_fields
+            doc_type = d.get("doc_type", "admission_form")
             break
 
     db_instance.update_document(doc_id, {"status": "committed", "fields": updated_fields})
 
+    if doc_type == "leave_application":
+        # Record leave as an informational alert — no student record created
+        leave_alert = {
+            "id": f"ALT-{int(datetime.datetime.now().timestamp())}",
+            "type": "leave",
+            "priority": "low",
+            "title": f"Leave Application: {updated_fields.get('student_name', 'Student')}",
+            "message": (
+                f"{updated_fields.get('student_name', 'Student')} (Class {updated_fields.get('class', 'N/A')}) "
+                f"applied for leave from {updated_fields.get('leave_from', 'N/A')} "
+                f"to {updated_fields.get('leave_to', 'N/A')}. "
+                f"Reason: {updated_fields.get('reason', 'Not specified')}."
+            ),
+            "timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "resolved": False,
+            "student_id": None,
+            "action": "Review and Approve Leave",
+        }
+        db_instance.insert_alert(leave_alert)
+        return
+
+    # admission_form or fee_receipt — create / update student record
     name = updated_fields.get("student_name", "User Enrolled Student")
     cls = updated_fields.get("class", "8A")
     parent = updated_fields.get("parent_name", "Parent")
@@ -332,7 +367,7 @@ def commit_doc(doc_id: str, updated_fields: dict):
     new_student = {
         "id": f"STU-{100 + stu_count}",
         "name": name,
-        "roll_no": f"{cls}-0{stu_count}",
+        "roll_no": updated_fields.get("roll_no") or f"{cls}-0{stu_count}",
         "class": cls,
         "parent_name": parent,
         "parent_phone": updated_fields.get("parent_phone", "+91 98765 12345"),
@@ -345,11 +380,9 @@ def commit_doc(doc_id: str, updated_fields: dict):
         "assigned_room": updated_fields.get("assigned_room", "Room 201")
     }
 
-    # Always update session state so dashboard reflects it immediately
     if "students" not in st.session_state:
         st.session_state.students = []
     st.session_state.students.insert(0, new_student)
-
     db_instance.upsert_student(new_student)
 
 def add_copilot_message(msg: dict):
@@ -360,6 +393,8 @@ def add_copilot_message(msg: dict):
         "sql": msg.get("sql"),
         "table_data": msg.get("table")
     }
+    if "copilot_messages" not in st.session_state:
+        st.session_state.copilot_messages = []
+    st.session_state.copilot_messages.append(msg_to_save)
     db_instance.insert_copilot_message(msg_to_save)
-    refresh_from_db()
 

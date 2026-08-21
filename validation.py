@@ -62,6 +62,20 @@ class TimetableSlotSchema(BaseModel):
     is_substitute: bool = Field(False, description="Is substitute assigned")
     substitute_teacher: Optional[str] = Field(None, description="Substitute teacher name")
 
+class LeaveApplicationSchema(BaseModel):
+    student_name: str = Field(..., description="Student full name")
+    class_name: str = Field(..., alias="class", description="Class/Grade section")
+    leave_from: str = Field(..., description="Leave start date (YYYY-MM-DD)")
+    leave_to: str = Field(..., description="Leave end date (YYYY-MM-DD)")
+    reason: str = Field(..., description="Reason for leave")
+    parent_name: Optional[str] = Field(None, description="Parent or guardian name")
+    parent_phone: Optional[str] = Field(None, description="Parent contact number")
+    approved: bool = Field(False, description="Whether leave is approved")
+
+    class Config:
+        populate_by_name = True
+
+
 class DocumentSchema(BaseModel):
     id: str = Field(..., description="Document ID")
     source_type: str = Field("file", description="Source type: image, file, text_paste")
@@ -149,3 +163,13 @@ def validate_timetable_slot(data: Dict[str, Any]) -> TimetableSlotSchema:
     except ValidationError as e:
         logger.error(f"Timetable slot validation failure: {e.errors()}")
         raise ValueError(f"Timetable slot validation failed: {e.errors()}")
+
+
+def validate_leave_application(data: Dict[str, Any]) -> LeaveApplicationSchema:
+    """Validates leave application data against LeaveApplicationSchema."""
+    try:
+        validated = LeaveApplicationSchema(**data)
+        return validated
+    except ValidationError as e:
+        logger.error(f"Leave application validation failure: {e.errors()}")
+        raise ValueError(f"Leave application validation failed: {e.errors()}")

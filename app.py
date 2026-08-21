@@ -65,70 +65,85 @@ if not is_authenticated():
     /* Hide Streamlit sidebar and top chrome on login page */
     section[data-testid="stSidebar"] { display: none !important; }
     header[data-testid="stHeader"] { display: none !important; }
-    /* Light blue gap fill — page background + column gaps */
-    .stApp, body, [data-testid="stAppViewContainer"] {
-        background-color: #DBEAFE !important;
-    }
-    [data-testid="stAppViewContainer"] > section {
-        background-color: #DBEAFE !important;
+
+    /* Full-bleed Canvas */
+    .stApp, body, [data-testid="stAppViewContainer"], [data-testid="stAppViewContainer"] > section {
+        background-color: #F8FAFC !important;
     }
     .main .block-container {
         padding: 0 !important;
         max-width: 100% !important;
-        background-color: #DBEAFE !important;
+        background-color: #F8FAFC !important;
     }
-    /* Column gap fill */
-    [data-testid="column"] {
-        background-color: #DBEAFE !important;
-    }
-    /* Right panel override to slightly different shade */
-    [data-testid="column"]:last-child {
-        background: #EEF2F7 !important;
+    
+    /* 50/50 Split Column Layout */
+    [data-testid="column"]:first-child {
+        background-color: #F8FAFC !important;
         min-height: 100vh;
+        padding: 48px 56px !important;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
     }
-    /* Remove default form card shadow so our custom wrapper controls it */
+    [data-testid="column"]:last-child {
+        background-color: #0E4B5B !important;
+        min-height: 100vh;
+        padding: 48px 40px !important;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+    }
+
+    /* Unified floating card container for the login panel */
     div[data-testid="stForm"] {
-        background: transparent !important;
-        border: none !important;
-        box-shadow: none !important;
-        padding: 0 !important;
+        background: #133E4B !important;
+        border: 1.5px solid #1E5869 !important;
+        border-radius: 16px !important;
+        padding: 36px 32px 28px !important;
+        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35), 0 0 30px rgba(76, 201, 240, 0.10) !important;
+        box-sizing: border-box !important;
     }
-    /* Input label overrides for login panel */
+
+    /* Input label overrides for dark teal login panel */
     .stTextInput label {
-        font-size: 0.72rem !important;
+        font-size: 0.74rem !important;
         font-weight: 700 !important;
-        color: #5B6B7F !important;
+        color: #E2E8F0 !important;
         text-transform: uppercase !important;
-        letter-spacing: 0.07em !important;
+        letter-spacing: 0.08em !important;
     }
-    /* ── All login inputs: identical styling for username + password ── */
+
+    /* ── Dark teal card inputs: Username & Password ── */
     div[data-baseweb="input"] {
-        border: 1.5px solid #D1D9E6 !important;
+        border: 1.5px solid #1E5869 !important;
         border-radius: 8px !important;
-        background: #FFFFFF !important;
+        background: #0B2A34 !important;
         transition: border-color 0.18s ease, box-shadow 0.18s ease !important;
     }
     div[data-baseweb="input"]:hover {
-        border-color: #93C5FD !important;
+        border-color: #4CC9F0 !important;
     }
     div[data-baseweb="input"]:focus-within {
-        border-color: #2563EB !important;
-        box-shadow: 0 0 0 3px rgba(37,99,235,0.10) !important;
+        border-color: #4CC9F0 !important;
+        box-shadow: 0 0 0 3px rgba(76, 201, 240, 0.25) !important;
     }
-    /* All input types — text, password, any */
+    /* Input field typography */
     div[data-baseweb="input"] > input {
-        font-size: 0.9rem !important;
-        color: #17365D !important;
-        caret-color: #17365D !important;
-        -webkit-text-fill-color: #17365D !important;
-        padding: 10px 14px !important;
-        background: #FFFFFF !important;
+        font-size: 0.95rem !important;
+        font-weight: 600 !important;
+        color: #FFFFFF !important;
+        caret-color: #4CC9F0 !important;
+        -webkit-text-fill-color: #FFFFFF !important;
+        padding: 12px 14px !important;
+        background: #0B2A34 !important;
     }
     div[data-baseweb="input"] > input::placeholder {
-        color: #A0AEC0 !important;
-        -webkit-text-fill-color: #A0AEC0 !important;
+        color: #94A3B8 !important;
+        -webkit-text-fill-color: #94A3B8 !important;
+        font-weight: 400 !important;
     }
-    /* Autofill override — prevents browser black background on username */
+    /* Autofill override for dark input background */
     div[data-baseweb="input"] > input:-webkit-autofill,
     div[data-baseweb="input"] > input:-webkit-autofill:hover,
     div[data-baseweb="input"] > input:-webkit-autofill:focus,
@@ -137,175 +152,131 @@ if not is_authenticated():
     input:-webkit-autofill:hover,
     input:-webkit-autofill:focus,
     input:-webkit-autofill:active {
-        -webkit-box-shadow: 0 0 0 1000px #FFFFFF inset !important;
-        box-shadow: 0 0 0 1000px #FFFFFF inset !important;
-        -webkit-text-fill-color: #17365D !important;
-        caret-color: #17365D !important;
-        background-color: #FFFFFF !important;
+        -webkit-box-shadow: 0 0 0 1000px #0B2A34 inset !important;
+        box-shadow: 0 0 0 1000px #0B2A34 inset !important;
+        -webkit-text-fill-color: #FFFFFF !important;
+        caret-color: #4CC9F0 !important;
+        font-weight: 600 !important;
+        background-color: #0B2A34 !important;
         transition: background-color 9999s ease-in-out 0s !important;
     }
-    /* Capability card hover lift — pure CSS, no JS */
-    .edu-cap-card {
-        background: rgba(255,255,255,0.055);
-        border: 1px solid rgba(255,255,255,0.10);
-        border-radius: 10px;
-        padding: 16px 18px;
-        transition: background 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
-        cursor: default;
-    }
-    .edu-cap-card:hover {
-        background: rgba(96,165,250,0.12);
-        border-color: rgba(96,165,250,0.35);
-        transform: translateY(-2px);
-    }
-    /* Pulse animation for the AI-ready dot */
-    @keyframes edu-pulse {
-        0%   { opacity: 1; }
-        50%  { opacity: 0.4; }
-        100% { opacity: 1; }
-    }
-    .edu-pulse-dot {
-        display: inline-block;
-        width: 7px; height: 7px;
-        border-radius: 50%;
-        background: #34D399;
-        animation: edu-pulse 2.4s ease-in-out infinite;
-    }
 
-
-
-    /* ── Primary button — enterprise blue ────────────────────────────────── */
+    /* ── Luminous Cyan CTA Submit Button ─────────── */
     .stButton > button[kind="primary"],
     button[kind="primaryFormSubmit"] {
-        background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%) !important;
-        color: #FFFFFF !important;
-        border: none !important;
+        background: #4CC9F0 !important;
+        color: #0A232C !important;
+        -webkit-text-fill-color: #0A232C !important;
+        border: 1px solid #4CC9F0 !important;
         border-radius: 8px !important;
-        font-size: 0.9rem !important;
-        font-weight: 700 !important;
-        letter-spacing: 0.01em !important;
-        padding: 12px 20px !important;
-        box-shadow: 0 2px 8px rgba(37,99,235,0.25) !important;
-        transition: background 0.18s ease, box-shadow 0.18s ease, transform 0.12s ease !important;
+        font-size: 0.98rem !important;
+        font-weight: 800 !important;
+        letter-spacing: 0.02em !important;
+        padding: 13px 20px !important;
+        box-shadow: 0 4px 20px rgba(76, 201, 240, 0.40) !important;
+        transition: all 0.18s ease !important;
     }
     .stButton > button[kind="primary"]:hover,
     button[kind="primaryFormSubmit"]:hover {
-        background: linear-gradient(135deg, #1D4ED8 0%, #1E40AF 100%) !important;
-        box-shadow: 0 4px 14px rgba(37,99,235,0.35) !important;
+        background: #56CFE1 !important;
+        color: #0A232C !important;
+        -webkit-text-fill-color: #0A232C !important;
+        border-color: #56CFE1 !important;
+        box-shadow: 0 0 25px rgba(76, 201, 240, 0.65) !important;
         transform: translateY(-1px) !important;
     }
     .stButton > button[kind="primary"]:active,
     button[kind="primaryFormSubmit"]:active {
-        transform: translateY(0px) !important;
-        box-shadow: 0 1px 4px rgba(37,99,235,0.2) !important;
+        background: #38B6DB !important;
+        box-shadow: none !important;
     }
 
-    /* ── Auth error alert — polished enterprise style ────────────────────── */
-    div[data-testid="stAlert"][data-baseweb="notification"] {
-        border-radius: 8px !important;
-        border-left-width: 4px !important;
-        font-size: 0.83rem !important;
+    /* Feature value bullet item */
+    .edu-bullet-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 14px;
+        margin-bottom: 18px;
+    }
+    .edu-bullet-icon {
+        width: 34px;
+        height: 34px;
+        border-radius: 8px;
+        background: #F1F5F9;
+        border: 1px solid #E2E8F0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.05rem;
+        flex-shrink: 0;
+        margin-top: 2px;
     }
     </style>
     """, unsafe_allow_html=True)
 
-    col_left, col_right = st.columns([11, 9])
+    col_left, col_right = st.columns([1, 1])
 
-    # ── LEFT PANEL — Intelligence Command Center presentation ────────────────
+    # ── LEFT PANEL — Platform Value & Minimalist Architecture (Light Canvas) ──
     with col_left:
-        st.markdown("""
-        <div style="min-height:100vh;background:linear-gradient(160deg,#0A1628 0%,#0F2044 35%,#17365D 70%,#1A3F6F 100%);padding:44px 48px 36px;display:flex;flex-direction:column;justify-content:space-between;box-sizing:border-box;position:relative;overflow:hidden;">
-            <div style="position:absolute;top:-80px;right:-80px;width:320px;height:320px;background:radial-gradient(circle,rgba(37,99,235,0.12) 0%,transparent 70%);pointer-events:none;"></div>
-            <div style="position:absolute;bottom:60px;left:-60px;width:240px;height:240px;background:radial-gradient(circle,rgba(96,165,250,0.07) 0%,transparent 70%);pointer-events:none;"></div>
-            <div style="position:relative;z-index:1;">
-                <div style="display:flex;align-items:center;gap:12px;margin-bottom:40px;">
-                    <div style="width:38px;height:38px;background:linear-gradient(135deg,rgba(37,99,235,0.4),rgba(96,165,250,0.2));border:1px solid rgba(96,165,250,0.4);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1.15rem;box-shadow:0 0 16px rgba(37,99,235,0.25);">&#9889;</div>
-                    <div>
-                        <div style="font-size:1.05rem;font-weight:800;color:#FFFFFF;letter-spacing:-0.01em;line-height:1;">EduOS <span style="color:#60A5FA;">AI</span></div>
-                        <div style="font-size:0.6rem;font-weight:600;color:rgba(255,255,255,0.38);letter-spacing:0.14em;text-transform:uppercase;margin-top:3px;">School Operations Platform</div>
-                    </div>
-                </div>
-                <div style="margin-bottom:28px;">
-                    <div style="font-size:2.15rem;font-weight:800;color:#FFFFFF;letter-spacing:-0.03em;line-height:1.18;margin-bottom:12px;text-shadow:0 2px 12px rgba(0,0,0,0.3);">THE INTELLIGENT<br>OPERATING SYSTEM<br><span style="color:#60A5FA;background:linear-gradient(90deg,#60A5FA,#93C5FD);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">FOR SCHOOLS.</span></div>
-                    <div style="font-size:0.88rem;color:rgba(255,255,255,0.58);line-height:1.65;max-width:400px;">One AI-powered command center that transforms everyday school operations.</div>
-                </div>
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:24px;">
-                    <div class="edu-cap-card"><div style="font-size:1rem;margin-bottom:7px;line-height:1;">&#128196;</div><div style="font-size:0.8rem;font-weight:700;color:#FFFFFF;margin-bottom:4px;letter-spacing:-0.01em;">AI Document Processing</div><div style="font-size:0.72rem;color:rgba(255,255,255,0.5);line-height:1.55;">Extract structured data from forms and records automatically.</div></div>
-                    <div class="edu-cap-card"><div style="font-size:1rem;margin-bottom:7px;line-height:1;">&#129504;</div><div style="font-size:0.8rem;font-weight:700;color:#FFFFFF;margin-bottom:4px;letter-spacing:-0.01em;">Smart Timetable</div><div style="font-size:0.72rem;color:rgba(255,255,255,0.5);line-height:1.55;">Detect scheduling conflicts and generate optimized allocations.</div></div>
-                    <div class="edu-cap-card"><div style="font-size:1rem;margin-bottom:7px;line-height:1;">&#128202;</div><div style="font-size:0.8rem;font-weight:700;color:#FFFFFF;margin-bottom:4px;letter-spacing:-0.01em;">Predictive Resources</div><div style="font-size:0.72rem;color:rgba(255,255,255,0.5);line-height:1.55;">Anticipate staffing and operational bottlenecks before they escalate.</div></div>
-                    <div class="edu-cap-card"><div style="font-size:1rem;margin-bottom:7px;line-height:1;">&#10003;</div><div style="font-size:0.8rem;font-weight:700;color:#FFFFFF;margin-bottom:4px;letter-spacing:-0.01em;">Automated Attendance</div><div style="font-size:0.72rem;color:rgba(255,255,255,0.5);line-height:1.55;">Connect attendance data directly with the centralized ERP.</div></div>
-                </div>
-                <div style="background:rgba(0,0,0,0.22);border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:16px 20px;margin-bottom:18px;">
-                    <div style="font-size:0.6rem;font-weight:700;color:rgba(255,255,255,0.3);letter-spacing:0.13em;text-transform:uppercase;margin-bottom:12px;">How EduOS AI Centralizes School Operations</div>
-                    <div style="display:flex;align-items:center;flex-wrap:nowrap;overflow-x:auto;overflow-y:visible;">
-                        <div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0;">
-                            <div style="font-size:0.68rem;color:rgba(255,255,255,0.45);background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);border-radius:5px;padding:4px 10px;white-space:nowrap;">Documents</div>
-                            <div style="font-size:0.68rem;color:rgba(255,255,255,0.45);background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);border-radius:5px;padding:4px 10px;white-space:nowrap;">Timetable</div>
-                            <div style="font-size:0.68rem;color:rgba(255,255,255,0.45);background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);border-radius:5px;padding:4px 10px;white-space:nowrap;">Attendance</div>
-                            <div style="font-size:0.68rem;color:rgba(255,255,255,0.45);background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);border-radius:5px;padding:4px 10px;white-space:nowrap;">Resources</div>
-                        </div>
-                        <div style="display:flex;flex-direction:column;gap:6px;padding:0 6px;flex-shrink:0;">
-                            <div style="font-size:0.65rem;color:rgba(96,165,250,0.5);line-height:1.9;">&#9472;&#9472;&#9484;</div>
-                            <div style="font-size:0.65rem;color:rgba(96,165,250,0.5);line-height:1.9;">&#9472;&#9472;&#9508;</div>
-                            <div style="font-size:0.65rem;color:rgba(96,165,250,0.5);line-height:1.9;">&#9472;&#9472;&#9508;</div>
-                            <div style="font-size:0.65rem;color:rgba(96,165,250,0.5);line-height:1.9;">&#9472;&#9472;&#9496;</div>
-                        </div>
-                        <div style="background:linear-gradient(135deg,rgba(37,99,235,0.35),rgba(96,165,250,0.2));border:1px solid rgba(96,165,250,0.4);border-radius:8px;padding:10px 14px;text-align:center;flex-shrink:0;box-shadow:0 0 18px rgba(37,99,235,0.2);">
-                            <div style="font-size:0.75rem;font-weight:800;color:#FFFFFF;letter-spacing:-0.01em;line-height:1.2;">EduOS<br><span style="color:#60A5FA;">AI</span></div>
-                        </div>
-                        <div style="font-size:0.75rem;color:rgba(96,165,250,0.6);padding:0 6px;flex-shrink:0;">&#9472;&#9472;&#8594;</div>
-                        <div style="background:rgba(52,211,153,0.1);border:1px solid rgba(52,211,153,0.25);border-radius:8px;padding:10px 12px;text-align:center;flex-shrink:0;">
-                            <div style="font-size:0.68rem;font-weight:700;color:#34D399;line-height:1.4;">School<br>Operations</div>
-                        </div>
-                    </div>
-                </div>
-                <div style="background:rgba(0,0,0,0.28);border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:15px 18px;">
-                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-                        <div style="display:flex;align-items:center;gap:7px;">
-                            <span class="edu-pulse-dot"></span>
-                            <span style="font-size:0.6rem;font-weight:700;color:rgba(255,255,255,0.4);letter-spacing:0.14em;text-transform:uppercase;">EduOS Intelligence</span>
-                        </div>
-                        <span style="font-size:0.62rem;font-weight:700;color:#34D399;letter-spacing:0.08em;">&#9679; AI SYSTEM READY</span>
-                    </div>
-                    <div style="display:flex;flex-direction:column;gap:7px;">
-                        <div style="display:flex;justify-content:space-between;align-items:center;"><span style="font-size:0.72rem;color:rgba(255,255,255,0.45);">Document Intelligence</span><span style="font-size:0.62rem;font-weight:700;color:#34D399;background:rgba(52,211,153,0.1);border:1px solid rgba(52,211,153,0.22);border-radius:3px;padding:2px 8px;letter-spacing:0.05em;">READY</span></div>
-                        <div style="display:flex;justify-content:space-between;align-items:center;"><span style="font-size:0.72rem;color:rgba(255,255,255,0.45);">Timetable Optimization</span><span style="font-size:0.62rem;font-weight:700;color:#34D399;background:rgba(52,211,153,0.1);border:1px solid rgba(52,211,153,0.22);border-radius:3px;padding:2px 8px;letter-spacing:0.05em;">READY</span></div>
-                        <div style="display:flex;justify-content:space-between;align-items:center;"><span style="font-size:0.72rem;color:rgba(255,255,255,0.45);">Resource Prediction</span><span style="font-size:0.62rem;font-weight:700;color:#34D399;background:rgba(52,211,153,0.1);border:1px solid rgba(52,211,153,0.22);border-radius:3px;padding:2px 8px;letter-spacing:0.05em;">READY</span></div>
-                        <div style="display:flex;justify-content:space-between;align-items:center;"><span style="font-size:0.72rem;color:rgba(255,255,255,0.45);">Attendance Automation</span><span style="font-size:0.62rem;font-weight:700;color:#34D399;background:rgba(52,211,153,0.1);border:1px solid rgba(52,211,153,0.22);border-radius:3px;padding:2px 8px;letter-spacing:0.05em;">READY</span></div>
-                    </div>
-                </div>
-            </div>
-            <div style="position:relative;z-index:1;border-top:1px solid rgba(255,255,255,0.08);padding-top:18px;margin-top:24px;">
-                <div style="font-size:0.72rem;font-weight:800;color:rgba(255,255,255,0.55);letter-spacing:0.16em;text-transform:uppercase;margin-bottom:5px;">ONE LOGIN. ONE COMMAND CENTER.</div>
-                <div style="font-size:0.7rem;color:rgba(255,255,255,0.3);letter-spacing:0.02em;">Connected school operations. Intelligent decisions. Minimal clicks.</div>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
+        st.markdown(
+            '<div style="height:100%;display:flex;flex-direction:column;justify-content:space-between;">'
+            '<div>'
+            '<div style="display:flex;align-items:center;gap:12px;margin-bottom:44px;">'
+            '<div style="width:38px;height:38px;background:#0E4B5B;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1.15rem;color:#F59E0B;box-shadow:0 4px 12px rgba(14,75,91,0.25);">&#9889;</div>'
+            '<div>'
+            '<div style="font-size:1.15rem;font-weight:900;color:#0F172A;letter-spacing:-0.02em;line-height:1;">EduOS <span style="color:#0E4B5B;">AI</span></div>'
+            '<div style="font-size:0.62rem;font-weight:700;color:#94A3B8;letter-spacing:0.14em;text-transform:uppercase;margin-top:3px;">School Operations Platform</div>'
+            '</div>'
+            '</div>'
+            '<div style="margin-bottom:36px;">'
+            '<div style="font-size:2.25rem;font-weight:900;color:#0F172A;letter-spacing:-0.035em;line-height:1.15;margin-bottom:14px;">THE INTELLIGENT<br>OPERATING SYSTEM<br><span style="color:#0E4B5B;">FOR SCHOOLS.</span></div>'
+            '<div style="font-size:0.92rem;color:#475569;line-height:1.6;max-width:440px;">One AI-powered command center that transforms everyday school operations.</div>'
+            '</div>'
+            '<div style="margin-bottom:32px;max-width:460px;">'
+            '<div class="edu-bullet-item"><div class="edu-bullet-icon">&#128196;</div><div><div style="font-size:0.88rem;font-weight:700;color:#0F172A;margin-bottom:2px;">Automated Document Intelligence</div><div style="font-size:0.78rem;color:#64748B;line-height:1.45;">Instant, structured extraction from admission forms, fee receipts, and student files.</div></div></div>'
+            '<div class="edu-bullet-item"><div class="edu-bullet-icon">&#129504;</div><div><div style="font-size:0.88rem;font-weight:700;color:#0F172A;margin-bottom:2px;">Conflict-Free Smart Scheduling</div><div style="font-size:0.78rem;color:#64748B;line-height:1.45;">Mathematical OR-Tools optimization balancing teacher workload and classroom capacity.</div></div></div>'
+            '<div class="edu-bullet-item"><div class="edu-bullet-icon">&#128202;</div><div><div style="font-size:0.88rem;font-weight:700;color:#0F172A;margin-bottom:2px;">Predictive Resource Allocation</div><div style="font-size:0.78rem;color:#64748B;line-height:1.45;">Forecasting staffing pressure and attendance anomalies before operational bottlenecks occur.</div></div></div>'
+            '</div>'
+            '<div style="margin-top:12px;opacity:0.85;">'
+            '<svg width="280" height="70" viewBox="0 0 280 70" fill="none" xmlns="http://www.w3.org/2000/svg">'
+            '<path d="M10 35H60L75 15L95 55L115 25L130 35H180" stroke="#0E4B5B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>'
+            '<circle cx="180" cy="35" r="4" fill="#F59E0B" />'
+            '<path d="M184 35H240" stroke="#94A3B8" stroke-width="1.5" stroke-dasharray="4 4"/>'
+            '<circle cx="245" cy="35" r="8" stroke="#0E4B5B" stroke-width="2" fill="#FFFFFF"/>'
+            '<circle cx="245" cy="35" r="3" fill="#4CC9F0"/>'
+            '</svg>'
+            '</div>'
+            '</div>'
+            '<div style="border-top:1px solid #E2E8F0;padding-top:16px;margin-top:28px;">'
+            '<div style="font-size:0.75rem;font-weight:900;color:#0F172A;letter-spacing:0.12em;text-transform:uppercase;margin-bottom:3px;">ONE LOGIN. ONE COMMAND CENTER.</div>'
+            '<div style="font-size:0.75rem;font-weight:600;color:#334155;">Connected school operations. Intelligent decisions. Minimal clicks.</div>'
+            '</div>'
+            '</div>',
+            unsafe_allow_html=True
+        )
 
-    # ── RIGHT PANEL — Premium login card ───────────────────────────────────────
+    # ── RIGHT PANEL — Floating Dark Teal Glass Container ──────────────────────
     with col_right:
-        # Top padding to push card into visual center
-        st.markdown("<div style='height:8vh;'></div>", unsafe_allow_html=True)
-
-        # Card column — narrow, centered
-        _, card_col, _ = st.columns([1, 10, 1])
+        # Centered card column
+        _, card_col, _ = st.columns([1, 12, 1])
         with card_col:
 
-            # ── Unified card: header + form fields + footer in one shell ──────
+            # ── Unified card: header + form fields + footer in floating glass panel ──
             with st.form("login_form", clear_on_submit=False):
-                st.markdown("""
-                <div style="background:#FFFFFF;border:1px solid #DDE4EF;border-radius:18px;padding:36px 36px 8px;box-shadow:0 4px 24px rgba(15,32,68,0.08),0 1px 4px rgba(15,32,68,0.04);box-sizing:border-box;margin-bottom:0;">
-                    <div style="display:flex;align-items:center;gap:7px;margin-bottom:20px;">
-                        <span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#2563EB;box-shadow:0 0 6px rgba(37,99,235,0.5);"></span>
-                        <span style="font-size:0.62rem;font-weight:700;color:#2563EB;letter-spacing:0.14em;text-transform:uppercase;">School Operations</span>
-                    </div>
-                    <div style="margin-bottom:24px;">
-                        <div style="font-size:1.6rem;font-weight:800;color:#17365D;letter-spacing:-0.03em;line-height:1.2;margin-bottom:6px;">Welcome back</div>
-                        <div style="font-size:0.84rem;color:#5B6B7F;line-height:1.55;">Access your school operations command center.</div>
-                    </div>
-                    <div style="height:1px;background:#EEF2F7;margin-bottom:20px;"></div>
-                </div>
-                """, unsafe_allow_html=True)
+                st.markdown(
+                    '<div style="margin-bottom:20px;">'
+                    '<div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;">'
+                    '<span style="display:inline-block;width:7px;height:7px;border-radius:2px;background:#4CC9F0;box-shadow:0 0 8px rgba(76,201,240,0.6);"></span>'
+                    '<span style="font-size:0.65rem;font-weight:800;color:#4CC9F0;letter-spacing:0.14em;text-transform:uppercase;">SCHOOL OPERATIONS</span>'
+                    '</div>'
+                    '<div style="margin-bottom:14px;">'
+                    '<div style="font-size:1.75rem;font-weight:900;color:#FFFFFF;letter-spacing:-0.03em;line-height:1.2;margin-bottom:6px;">Welcome back</div>'
+                    '<div style="font-size:0.86rem;color:#94A3B8;line-height:1.55;">Access your school operations command center.</div>'
+                    '</div>'
+                    '<div style="height:1px;background:#1E5869;margin-top:16px;"></div>'
+                    '</div>',
+                    unsafe_allow_html=True
+                )
 
                 username_input = st.text_input(
                     "Username",
@@ -319,7 +290,13 @@ if not is_authenticated():
                     key="login_password",
                 )
 
-                st.markdown("<div style='margin-top:10px;'></div>", unsafe_allow_html=True)
+                st.markdown(
+                    '<div style="display:flex;justify-content:flex-end;margin-top:-6px;margin-bottom:14px;">'
+                    '<span style="font-size:0.75rem;color:#4CC9F0;font-weight:600;cursor:pointer;letter-spacing:0.01em;">Forgot password?</span>'
+                    '</div>',
+                    unsafe_allow_html=True
+                )
+
                 submitted = st.form_submit_button(
                     "Enter Command Center  →",
                     type="primary",
@@ -335,49 +312,29 @@ if not is_authenticated():
 
             # ── Supabase / system warning (conditional — logic unchanged) ────────
             if not db_instance.is_supabase_active:
-                st.markdown("""
-                <div style="
-                    margin-top:12px;
-                    background:#FFFBEB;
-                    border:1px solid #FDE68A;
-                    border-left:4px solid #D97706;
-                    border-radius:10px;
-                    padding:14px 16px;
-                    display:flex;
-                    align-items:flex-start;
-                    gap:12px;
-                ">
-                    <span style="font-size:1.05rem;flex-shrink:0;margin-top:1px;">⚠</span>
-                    <div>
-                        <div style="
-                            font-size:0.72rem;font-weight:800;
-                            color:#92400E;letter-spacing:0.08em;
-                            text-transform:uppercase;margin-bottom:4px;
-                        ">System Configuration</div>
-                        <div style="font-size:0.78rem;color:#B45309;line-height:1.55;">
-                            School data services are currently unavailable.
-                            Please verify the system configuration before signing in.
-                        </div>
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
+                st.markdown(
+                    '<div style="margin-top:14px;background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.35);border-left:4px solid #F59E0B;border-radius:8px;padding:14px 16px;display:flex;align-items:flex-start;gap:12px;">'
+                    '<span style="font-size:1.05rem;flex-shrink:0;color:#F59E0B;margin-top:1px;">⚠</span>'
+                    '<div>'
+                    '<div style="font-size:0.72rem;font-weight:800;color:#F59E0B;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:4px;">System Configuration</div>'
+                    '<div style="font-size:0.78rem;color:#CBD5E1;line-height:1.5;">School data services are currently unavailable. Please verify the system configuration before signing in.</div>'
+                    '</div>'
+                    '</div>',
+                    unsafe_allow_html=True
+                )
 
             # ── Security footer ────────────────────────────────────────────────
-            st.markdown("""
-            <div style="
-                margin-top:20px;
-                padding-top:16px;
-                border-top:1px solid #DDE4EF;
-                text-align:center;
-            ">
-                <div style="font-size:0.78rem;font-weight:600;color:#5B6B7F;margin-bottom:5px;">
-                    🔒 Secure role-based access
-                </div>
-                <div style="font-size:0.7rem;color:#9AABB8;line-height:1.5;max-width:300px;margin:0 auto;">
-                    Your school data stays within the authorized operational environment.
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
+            st.markdown(
+                '<div style="margin-top:20px;padding-top:14px;text-align:center;">'
+                '<div style="font-size:0.82rem;font-weight:800;color:#000000;margin-bottom:4px;display:flex;align-items:center;justify-content:center;gap:6px;">'
+                '<span>🔒</span> <span>Secure role-based access</span>'
+                '</div>'
+                '<div style="font-size:0.76rem;font-weight:600;color:#1E293B;line-height:1.5;max-width:340px;margin:0 auto;">'
+                'Your school data stays within the authorized operational environment.'
+                '</div>'
+                '</div>',
+                unsafe_allow_html=True
+            )
 
     st.stop()
 
@@ -399,12 +356,12 @@ unresolved_count = len([a for a in visible_alerts if not a.get("resolved")])
 
 col_header, col_status = st.columns([3, 1])
 with col_header:
-    st.markdown("""
+    st.markdown(f"""
         <div style="padding: 8px 0 4px;">
-            <div style="font-size:1.5rem;font-weight:800;color:#17365D;letter-spacing:-0.02em;line-height:1.2;">
-                EduOS <span style="color:#2563EB;">AI</span>
+            <div style="font-size:1.5rem;font-weight:800;color:{C['navy']};letter-spacing:-0.02em;line-height:1.2;">
+                EduOS <span style="color:{C['blue']};">AI</span>
             </div>
-            <div style="font-size:0.8rem;color:#5B6B7F;font-weight:500;margin-top:2px;">School Operations Platform</div>
+            <div style="font-size:0.8rem;color:{C['text_muted']};font-weight:500;margin-top:2px;">School Operations Platform</div>
         </div>
     """, unsafe_allow_html=True)
 with col_status:
@@ -413,14 +370,14 @@ with col_status:
         DB_STATUS_CONNECTED, DB_STATUS_MISSING_CONFIG
     )
 
-st.markdown("<hr style='border:none;border-top:1px solid #D9E2EC;margin:8px 0 16px;'>", unsafe_allow_html=True)
+st.markdown(f"<hr style='border:none;border-top:1px solid {C['border']};margin:8px 0 16px;'>", unsafe_allow_html=True)
 
 # ── 5. Sidebar ──────────────────────────────────────────────────────────────
 with st.sidebar:
     st.markdown("""
-        <div style="padding:16px 0 12px;border-bottom:1px solid #D9E2EC;margin-bottom:12px;">
-            <div style="font-size:1.1rem;font-weight:800;color:#17365D;">EduOS AI</div>
-            <div style="font-size:0.72rem;color:#5B6B7F;font-weight:500;margin-top:2px;">School Operations Platform</div>
+        <div style="padding:16px 0 12px;border-bottom:1px solid rgba(255,255,255,0.12);margin-bottom:12px;">
+            <div style="font-size:1.1rem;font-weight:800;color:#FFFFFF;letter-spacing:-0.01em;">EduOS AI</div>
+            <div style="font-size:0.72rem;color:rgba(255,255,255,0.72);font-weight:500;margin-top:2px;">School Operations Platform</div>
         </div>
     """, unsafe_allow_html=True)
 
@@ -429,13 +386,13 @@ with st.sidebar:
     role_label = ROLE_LABELS.get(active_role, active_role.title())
     st.markdown(
         f"""
-        <div style="background:#F0F4FF;border:1px solid #C7D7F5;border-radius:8px;
+        <div style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);border-radius:8px;
                     padding:10px 14px;margin-bottom:12px;">
-            <div style="font-size:0.78rem;color:#5B6B7F;font-weight:500;">Signed in as</div>
-            <div style="font-size:0.95rem;font-weight:700;color:#17365D;margin-top:2px;">
+            <div style="font-size:0.75rem;color:rgba(255,255,255,0.65);font-weight:500;">Signed in as</div>
+            <div style="font-size:0.95rem;font-weight:700;color:#FFFFFF;margin-top:2px;">
                 {role_icon} {auth['username']}
             </div>
-            <div style="font-size:0.75rem;color:#2563EB;margin-top:2px;">{role_label}</div>
+            <div style="font-size:0.75rem;color:{C['action_blue']};margin-top:2px;font-weight:600;">{role_label}</div>
         </div>
         """,
         unsafe_allow_html=True,
@@ -469,10 +426,10 @@ with st.sidebar:
 
     selected_tab = st.radio("Module:", visible_tabs, key="nav_radio")
 
-    st.markdown("<hr style='border:none;border-top:1px solid #D9E2EC;margin:10px 0;'>", unsafe_allow_html=True)
+    st.markdown("<hr style='border:none;border-top:1px solid rgba(255,255,255,0.12);margin:10px 0;'>", unsafe_allow_html=True)
     with st.expander("Database & AI Status"):
         st.write(f"**Supabase Host:** `{db_instance.supabase_url or 'Not configured'}`")
-        st.write(f"**Groq Model:** `openai/gpt-oss-120b`")
+        st.write(f"**Groq Model:** `{groq_client.model}`")
         st.write(f"**Timetable Solver:** `Google OR-Tools CP-SAT`")
         if db_instance.connection_status == DB_STATUS_MISSING_CONFIG:
             st.warning(
@@ -488,7 +445,7 @@ with st.sidebar:
             refresh_from_db()
             st.rerun()
 
-    st.markdown("<hr style='border:none;border-top:1px solid #D9E2EC;margin:10px 0;'>", unsafe_allow_html=True)
+    st.markdown("<hr style='border:none;border-top:1px solid rgba(255,255,255,0.12);margin:10px 0;'>", unsafe_allow_html=True)
     if st.button("🚪 Sign Out", use_container_width=True):
         logout_user()
         st.rerun()
@@ -546,6 +503,7 @@ if selected_tab == TAB_DASHBOARD:
                 str(len(students_list)) if students_list else "0",
                 "Active records" if students_list else "No records yet",
                 "good" if students_list else "",
+                accent_bg=C["kpi_cream"],
             )
         with k2:
             att_status = "good" if avg_att >= 80 else ("warning" if avg_att >= 60 else "danger")
@@ -575,6 +533,7 @@ if selected_tab == TAB_DASHBOARD:
                 f"{_score}/100",
                 f"{_level} — View Insights for details",
                 _staff_status,
+                accent_bg=C["kpi_cyan"] if _level == "LOW" else "",
             )
 
         st.markdown("<div style='margin-top:8px;'></div>", unsafe_allow_html=True)
@@ -658,7 +617,7 @@ if selected_tab == TAB_DASHBOARD:
 
         with right_col:
             render_section_header("AI Analytics Insights")
-            live_insights = st.session_state.insights
+            live_insights = st.session_state.get("insights", [])
             if live_insights:
                 for ins in live_insights[:3]:
                     render_insight_card(ins)
@@ -778,15 +737,16 @@ if selected_tab == TAB_DASHBOARD:
                 att_pct = float(stu.get('attendance_pct', 0))
                 att_status = "good" if att_pct >= 80 else ("warning" if att_pct >= 60 else "danger")
                 badge_level = "success" if att_pct >= 80 else ("warning" if att_pct >= 60 else "danger")
+                card_accent = C["success"] if att_pct >= 80 else (C["warning"] if att_pct >= 60 else C["danger"])
                 st.markdown(
                     f"""
-<div style="background:#FFFFFF;border:1px solid #D9E2EC;border-left:3px solid {'#16A34A' if att_pct >= 80 else ('#D97706' if att_pct >= 60 else '#DC2626')};
+<div style="background:{C['surface']};border:1px solid {C['border']};border-left:3px solid {card_accent};
             border-radius:8px;padding:12px 18px;margin-bottom:8px;
             box-shadow:0 1px 3px rgba(0,0,0,0.04);">
     <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
         <div style="flex:1;">
-            <div style="font-size:0.9rem;font-weight:700;color:#17365D;">{stu['name']}</div>
-            <div style="font-size:0.78rem;color:#5B6B7F;margin-top:2px;">Class {stu.get('class', '—')} &nbsp;·&nbsp; Attendance: <strong>{att_pct}%</strong></div>
+            <div style="font-size:0.9rem;font-weight:700;color:{C['navy']};">{stu['name']}</div>
+            <div style="font-size:0.78rem;color:{C['text_muted']};margin-top:2px;">Class {stu.get('class', '—')} &nbsp;·&nbsp; Attendance: <strong>{att_pct}%</strong></div>
         </div>
     </div>
 </div>""",
@@ -1127,6 +1087,12 @@ elif selected_tab == TAB_TIMETABLE:
                 if st.button(lbl, key=f"t_btn_{t['id']}"):
                     toggle_teacher(t["id"])
                     st.rerun()
+
+    # Show solver warnings from last toggle_teacher() call
+    solver_warnings = st.session_state.pop("solver_warnings", None)
+    if solver_warnings:
+        for w in solver_warnings:
+            st.warning(f"⚠️ Solver: {w}")
 
     conflicts = [slot for slot in st.session_state.timetable if slot.get("has_conflict")]
     if conflicts:

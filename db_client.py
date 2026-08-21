@@ -276,6 +276,19 @@ class DatabaseClient:
             logger.error(f"Error fetching insights: {e}")
             return []
 
+    def upsert_insights(self, insights: List[Dict[str, Any]]) -> bool:
+        """Replaces all insight rows with the freshly calculated set."""
+        if not self.is_supabase_active or not self.supabase or not insights:
+            return False
+        try:
+            self.supabase.table("insights").delete().neq("id", "___NEQ_PLACEHOLDER___").execute()
+            self.supabase.table("insights").insert(insights).execute()
+            logger.info(f"Persisted {len(insights)} insight(s) to Supabase.")
+            return True
+        except Exception as e:
+            logger.error(f"Error upserting insights: {e}")
+            return False
+
     # ----------------------------------------------------
     # 8. Copilot Messages CRUD
     # ----------------------------------------------------

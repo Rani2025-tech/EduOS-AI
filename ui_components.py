@@ -30,59 +30,79 @@ import streamlit as st
 # Every color used anywhere in the design system is defined exactly once here.
 
 C: dict = {
-    # Brand
-    "navy":         "#17365D",   # primary brand / headings
-    "blue":         "#2563EB",   # interactive / links / active states
-    "blue_hover":   "#1D4ED8",   # button hover
-    "blue_light":   "#EFF6FF",   # blue tint background
-    "blue_mid":     "#DBEAFE",   # blue tint border / soft blue border
-    "blue_border":  "#93C5FD",   # secondary button border
+    # Brand — institutional teal
+    "navy":         "#2C3E50",   # dark charcoal — primary text & headings
+    "blue":         "#43829B",   # muted teal — primary interactive & charts
+    "blue_hover":   "#356F84",   # deeper teal on hover
+    "blue_light":   "#EAF3F5",   # soft teal tint background
+    "blue_mid":     "#C8DDE3",   # teal soft border
+    "blue_border":  "#C8DDE3",   # secondary button border
+    "action_blue":  "#5AB2D3",   # restrained interactive accent / subtle highlights
+
+    # Chart visualization colors
+    "chart_primary":   "#43829B", # primary chart series (muted teal)
+    "chart_secondary": "#EF7652", # secondary comparison series (muted coral/orange)
+
+    # Sidebar brand
+    "sidebar_bg":            "#16465C",  # deep institutional teal
+    "sidebar_active":        "#1F5870",  # active nav item
+    "sidebar_hover":         "#1C526A",  # hover nav item
+    "sidebar_text":          "#FFFFFF",  # active / heading sidebar text
+    "sidebar_text_inactive": "rgba(255,255,255,0.72)", # inactive nav text
 
     # Backgrounds
-    "bg":           "#F5F7FA",   # page background
-    "bg_subtle":    "#F1F5F9",   # slightly darker surface (zebra rows, etc.)
+    "bg":           "#F4F6F9",   # neutral enterprise gray canvas
+    "bg_subtle":    "#F8F9FA",   # table header / subtle surface
     "surface":      "#FFFFFF",   # card / panel surface
 
     # Borders
-    "border":       "#D9E2EC",   # default border
-    "border_light": "#E6EDF5",   # light divider
-    "border_dark":  "#C7D2E0",   # stronger border (inputs)
+    "border":       "#E3E8EC",   # default neutral border
+    "border_light": "#EDF2F7",   # subtle divider
+    "border_dark":  "#D5DDE2",   # stronger border (inputs)
 
     # Text
-    "text":         "#17365D",   # primary text (dark navy)
-    "text_body":    "#5B6B7F",   # body text
-    "text_muted":   "#5B6B7F",   # secondary / label text
-    "text_light":   "#7A8797",   # placeholder / tertiary text
+    "text":         "#2C3E50",   # dark charcoal body text
+    "text_body":    "#7F8C8D",   # secondary body text
+    "text_muted":   "#7F8C8D",   # muted / label text
+    "text_light":   "#95A5A6",   # placeholder / tertiary text
 
     # Semantic — success (green)
-    "success":      "#16A34A",
-    "success_bg":   "#ECFDF3",
-    "success_bd":   "#BBF7D0",
+    "success":      "#16803C",
+    "success_bg":   "#ECF7EF",
+    "success_bd":   "#C4E3CB",
 
     # Semantic — warning (amber)
-    "warning":      "#D97706",
-    "warning_bg":   "#FFF7ED",
-    "warning_bd":   "#FED7AA",
+    "warning":      "#A16207",
+    "warning_bg":   "#FFF7E6",
+    "warning_bd":   "#E9D39A",
 
     # Semantic — danger / critical (red)
-    "danger":       "#DC2626",
-    "danger_bg":    "#FEF2F2",
-    "danger_bd":    "#FECACA",
+    "danger":       "#C0392B",
+    "danger_bg":    "#FDEDEC",
+    "danger_bd":    "#F2C5C2",
 
-    # Semantic — info (blue)
-    "info":         "#2563EB",
-    "info_bg":      "#EFF6FF",
-    "info_bd":      "#DBEAFE",
+    # Semantic — info (muted teal)
+    "info":         "#43829B",
+    "info_bg":      "#EAF3F5",
+    "info_bd":      "#C8DDE3",
 
-    # Semantic — high / orange (between warning and danger)
+    # Semantic — high / orange
     "high":         "#C2410C",
     "high_bg":      "#FFF7ED",
     "high_bd":      "#FED7AA",
 
-    # Purple (for copilot / AI accent)
-    "purple":       "#7C3AED",
-    "purple_bg":    "#F5F3FF",
-    "purple_bd":    "#DDD6FE",
+    # Copilot accent — institutional teal (no purple)
+    "purple":       "#43829B",
+    "purple_bg":    "#F0F5F6",
+    "purple_bd":    "#D5E3E7",
+
+    # KPI pastel accents (Unisuite education ERP palette)
+    "kpi_cream":    "#FCF4D4",
+    "kpi_cyan":     "#DFF0F4",
+    "kpi_teal":     "#E6F1F4",
+    "kpi_green":    "#ECF7EF",
+    "kpi_amber":    "#FFF7E6",
+    "kpi_red":      "#FDEDEC",
 }
 
 # ── Semantic severity → (foreground, background, border) ─────────────────────
@@ -183,69 +203,91 @@ header[data-testid="stHeader"] * {{
     max-width: 1280px;
 }}
 
-/* ── 4. Sidebar — white, dark text, blue active nav ──────────────────────── */
+/* ── 4. Sidebar — deep teal, white text ──────────────────────────────────── */
 section[data-testid="stSidebar"] {{
-    background-color: {C['surface']} !important;
-    border-right: 1px solid {C['border']} !important;
+    background-color: {C['sidebar_bg']} !important;
+    border-right: none !important;
     min-width: 240px;
 }}
 section[data-testid="stSidebar"] * {{
-    color: {C['text']} !important;
+    color: #FFFFFF !important;
 }}
-/* Section label headings (Persona / Navigation) */
+/* Section label headings */
 section[data-testid="stSidebar"] .stRadio > label,
 section[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p {{
     font-size: 0.68rem !important;
     font-weight: 700 !important;
     letter-spacing: 0.09em !important;
     text-transform: uppercase !important;
-    color: {C['text_muted']} !important;
+    color: rgba(255,255,255,0.58) !important;
     margin: 16px 0 6px 0 !important;
 }}
-/* Nav radio items */
+/* Nav radio items container & hover/active states */
+section[data-testid="stSidebar"] .stRadio div[role="radiogroup"] > label {{
+    padding: 6px 12px !important;
+    border-radius: 6px !important;
+    margin-bottom: 3px !important;
+    transition: background 0.15s ease;
+}}
+section[data-testid="stSidebar"] .stRadio div[role="radiogroup"] > label:hover {{
+    background: {C['sidebar_hover']} !important;
+}}
+section[data-testid="stSidebar"] .stRadio div[role="radiogroup"] > label:has(input:checked) {{
+    background: {C['sidebar_active']} !important;
+}}
+/* Nav radio items text */
 section[data-testid="stSidebar"] .stRadio label span {{
     font-size: 0.875rem !important;
     font-weight: 500 !important;
-    color: {C['text']} !important;
+    color: {C['sidebar_text_inactive']} !important;
     letter-spacing: 0 !important;
     text-transform: none !important;
+    transition: color 0.15s ease;
+}}
+section[data-testid="stSidebar"] .stRadio div[role="radiogroup"] > label:hover span,
+section[data-testid="stSidebar"] .stRadio div[role="radiogroup"] > label:has(input:checked) span {{
+    color: #FFFFFF !important;
 }}
 /* Sidebar dividers */
 section[data-testid="stSidebar"] hr {{
-    border-color: {C['border']} !important;
+    border-color: rgba(255,255,255,0.12) !important;
     margin: 10px 0 !important;
 }}
 /* Sidebar selectbox */
 section[data-testid="stSidebar"] .stSelectbox label {{
-    color: {C['text_muted']} !important;
+    color: rgba(255,255,255,0.55) !important;
     font-size: 0.68rem !important;
     font-weight: 700 !important;
     text-transform: uppercase !important;
     letter-spacing: 0.07em !important;
 }}
 section[data-testid="stSidebar"] .stSelectbox [data-baseweb="select"] {{
-    background: {C['bg']} !important;
-    border-color: {C['border']} !important;
+    background: rgba(255,255,255,0.08) !important;
+    border-color: rgba(255,255,255,0.15) !important;
 }}
 /* Sidebar buttons */
 section[data-testid="stSidebar"] .stButton > button {{
-    background: {C['bg']} !important;
-    color: {C['text']} !important;
-    border: 1px solid {C['border']} !important;
+    background: rgba(255,255,255,0.07) !important;
+    color: rgba(255,255,255,0.85) !important;
+    border: 1px solid rgba(255,255,255,0.15) !important;
     width: 100% !important;
     font-size: 0.8rem !important;
 }}
 section[data-testid="stSidebar"] .stButton > button:hover {{
-    background: {C['blue_light']} !important;
-    border-color: {C['blue']} !important;
-    color: {C['blue']} !important;
+    background: {C['sidebar_hover']} !important;
+    border-color: rgba(255,255,255,0.25) !important;
+    color: #FFFFFF !important;
 }}
 /* Sidebar expander */
 section[data-testid="stSidebar"] .streamlit-expanderHeader {{
-    background: {C['bg']} !important;
-    border-color: {C['border']} !important;
-    color: {C['text']} !important;
+    background: rgba(255,255,255,0.06) !important;
+    border-color: rgba(255,255,255,0.12) !important;
+    color: rgba(255,255,255,0.82) !important;
     font-size: 0.8rem !important;
+}}
+section[data-testid="stSidebar"] .streamlit-expanderContent {{
+    background: rgba(255,255,255,0.04) !important;
+    border-color: rgba(255,255,255,0.10) !important;
 }}
 
 /* ── 4. st.metric cards ──────────────────────────────────────────────────── */
@@ -284,28 +326,30 @@ div[data-testid="stMetricDelta"] {{
     background: {C['surface']};
     color: {C['text']};
     transition: border-color 0.15s, color 0.15s, background 0.15s;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.04);
 }}
 .stButton > button:hover {{
     border-color: {C['blue']};
     color: {C['blue']};
-    background: {C['blue_light']};
+    background: #F4F7F8;
     box-shadow: none;
 }}
 .stButton > button:focus {{
     outline: 2px solid {C['blue']};
     outline-offset: 2px;
 }}
-/* Primary variant — Streamlit uses kind="primary" */
+/* Primary variant — solid, no gradient */
 .stButton > button[kind="primary"] {{
     background: {C['blue']};
     color: #ffffff;
     border-color: {C['blue']};
+    box-shadow: none;
 }}
 .stButton > button[kind="primary"]:hover {{
     background: {C['blue_hover']};
     border-color: {C['blue_hover']};
     color: #ffffff;
+    box-shadow: none;
 }}
 
 /* ── 6. Tabs ─────────────────────────────────────────────────────────────── */
@@ -358,27 +402,27 @@ div[data-testid="stMetricDelta"] {{
     background: {C['bg_subtle']} !important;
 }}
 .stDataFrame tbody tr:hover {{
-    background: {C['blue_light']} !important;
+    background: {C['bg_subtle']} !important;
 }}
 
 /* ── 8. Forms & Inputs ───────────────────────────────────────────────────── */
 div[data-testid="stForm"] {{
     background: {C['surface']} !important;
     border: 1px solid {C['border']} !important;
-    border-radius: 12px !important;
+    border-radius: 10px !important;
     padding: 24px 28px !important;
-    box-shadow: 0 4px 20px -2px rgba(23, 54, 93, 0.06), 0 2px 6px -1px rgba(23, 54, 93, 0.03) !important;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.03) !important;
 }}
 
 div[data-baseweb="input"] {{
     border: 1px solid {C['border_dark']} !important;
-    border-radius: 8px !important;
+    border-radius: 6px !important;
     background: #FFFFFF !important;
     transition: border-color 0.15s, box-shadow 0.15s;
 }}
 div[data-baseweb="input"]:focus-within {{
     border-color: {C['blue']} !important;
-    box-shadow: 0 0 0 3px rgba(37,99,235,0.12) !important;
+    box-shadow: 0 0 0 3px rgba(67,130,155,0.15) !important;
 }}
 div[data-baseweb="input"] > input {{
     color: {C['navy']} !important;
@@ -408,14 +452,14 @@ div[data-baseweb="input"] > input:-webkit-autofill:active {{
 }}
 .stTextArea > div > div > textarea {{
     border: 1px solid {C['border_dark']} !important;
-    border-radius: 8px !important;
+    border-radius: 6px !important;
     background: #FFFFFF !important;
     padding: 10px 12px !important;
     transition: border-color 0.15s, box-shadow 0.15s;
 }}
 .stTextArea > div > div > textarea:focus {{
     border-color: {C['blue']} !important;
-    box-shadow: 0 0 0 3px rgba(37,99,235,0.12) !important;
+    box-shadow: 0 0 0 3px rgba(67,130,155,0.15) !important;
 }}
 .stSelectbox [data-baseweb="select"] > div {{
     border: 1px solid {C['border_dark']} !important;
@@ -512,7 +556,7 @@ hr {{
 }}
 .stFileUploader > div:hover {{
     border-color: {C['blue']} !important;
-    background: {C['blue_light']} !important;
+    background: {C['bg_subtle']} !important;
 }}
 /* Uploaded file name row — white background, dark blue text */
 [data-testid="stFileUploaderFile"],
@@ -777,30 +821,18 @@ def render_kpi_card(
     value: str,
     description: str = "",
     status: str = "",
+    accent_bg: str = "",
 ) -> None:
     """
-    Renders a standalone KPI metric card.
+    Renders a standalone KPI metric card with optional Unisuite pastel backgrounds.
 
     Parameters
     ----------
     label       : Short uppercase label, e.g. "ENROLLED STUDENTS"
     value       : Primary metric value, e.g. "1,248" or "Data unavailable"
     description : Supporting line below the value, e.g. "Active records"
-    status      : "good" | "warning" | "danger" | "" (neutral)
-
-    Design
-    ------
-    ┌──────────────────────────────┐
-    │ LABEL                        │
-    │                              │
-    │ 1,248                        │
-    │ Active records               │  ← colored by status
-    └──────────────────────────────┘
-
-    Empty-state contract
-    --------------------
-    If value is "Data unavailable", description should explain why.
-    Never pass fabricated numbers.
+    status      : "good" | "warning" | "danger" | "cream" | "cyan" | "teal" | "" (neutral)
+    accent_bg   : Optional explicit background color or token key (e.g. C["kpi_cream"])
     """
     status_fg = {
         "good":    C["success"],
@@ -809,13 +841,32 @@ def render_kpi_card(
         "":        C["text_muted"],
     }.get(status, C["text_muted"])
 
-    # Left accent bar color
-    accent = {
-        "good":    C["success"],
-        "warning": C["warning"],
-        "danger":  C["danger"],
-        "":        C["border"],
-    }.get(status, C["border"])
+    # Determine background and left accent bar
+    card_bg = C["surface"]
+    card_border = C["border"]
+    accent = C["border"]
+
+    if accent_bg:
+        if accent_bg.startswith("#"):
+            card_bg = accent_bg
+        else:
+            card_bg = C.get(f"kpi_{accent_bg}", C.get(accent_bg, C["surface"]))
+
+    if status == "good":
+        accent = C["success"]
+    elif status == "warning":
+        accent = C["warning"]
+    elif status == "danger":
+        accent = C["danger"]
+    elif status in ("cream", "kpi_cream"):
+        card_bg = C["kpi_cream"]
+        accent = "#D4AF37"
+    elif status in ("cyan", "kpi_cyan"):
+        card_bg = C["kpi_cyan"]
+        accent = C["blue"]
+    elif status in ("teal", "kpi_teal"):
+        card_bg = C["kpi_teal"]
+        accent = C["blue"]
 
     desc_html = (
         f'<div style="font-size:0.75rem;font-weight:600;'
@@ -825,10 +876,10 @@ def render_kpi_card(
 
     st.markdown(
         f"""
-<div style="background:{C['surface']};border:1px solid {C['border']};
+<div style="background:{card_bg};border:1px solid {card_border};
             border-left:3px solid {accent};border-radius:8px;
             padding:16px 20px;
-            box-shadow:0 1px 3px rgba(0,0,0,0.05),0 1px 2px rgba(0,0,0,0.04);">
+            box-shadow:0 1px 3px rgba(0,0,0,0.04);">
     <div style="font-size:0.7rem;font-weight:700;color:{C['text_muted']};
                 text-transform:uppercase;letter-spacing:0.07em;
                 margin-bottom:8px;">{label}</div>
@@ -1053,7 +1104,7 @@ def render_insight_card(insight: dict) -> None:
 <div style="background:{C['surface']};border:1px solid {C['border']};
             border-left:4px solid {fg};border-radius:10px;
             padding:18px 20px;margin-bottom:12px;
-            box-shadow:0 2px 8px rgba(15,23,42,0.04);">
+            box-shadow:0 1px 3px rgba(0,0,0,0.05);">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;gap:12px;">
         <div>
             <div style="font-size:0.68rem;font-weight:700;color:{C['text_light']};
@@ -1203,10 +1254,10 @@ def render_recommendation_item(index: int, text: str) -> None:
     """
     st.markdown(
         f"""
-<div style="background:{C['blue_light']};border:1px solid {C['blue_mid']};
+<div style="background:{C['bg_subtle']};border:1px solid {C['border']};
             border-left:3px solid {C['blue']};border-radius:6px;
             padding:10px 16px;margin-bottom:8px;
-            font-size:0.85rem;color:{C['text']};line-height:1.5;">
+            font-size:0.85rem;color:{C['text_body']};line-height:1.5;">
     <strong style="color:{C['navy']};">{index}.</strong>&nbsp;{html.escape(str(text))}
 </div>
 """,
@@ -1351,9 +1402,9 @@ def section_header(title: str) -> None:
     """Alias for render_section_header(). Preserved for backward compatibility."""
     render_section_header(title)
 
-def kpi_card(label: str, value: str, description: str = "", status: str = "") -> None:
+def kpi_card(label: str, value: str, description: str = "", status: str = "", accent_bg: str = "") -> None:
     """Alias for render_kpi_card(). Preserved for backward compatibility."""
-    render_kpi_card(label, value, description, status)
+    render_kpi_card(label, value, description, status, accent_bg)
 
 def status_badge(text: str, level: str = "neutral") -> str:
     """Alias for render_status_badge(). Preserved for backward compatibility."""

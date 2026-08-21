@@ -18,7 +18,7 @@ except ImportError:
 class GroqAIClient:
     def __init__(self):
         self.api_key = os.getenv("GROQ_API_KEY", "").strip()
-        self.model = "openai/gpt-oss-120b"
+        self.model = "llama-3.3-70b-versatile"
         self.client = None
 
         if not self.api_key:
@@ -134,5 +134,26 @@ class GroqAIClient:
             "Output ONLY valid JSON."
         )
         return self._call_groq_json(system_prompt, f"Raw Timetable Input:\n{raw_text}")
+
+    def extract_leave_application_from_text(self, raw_text: str) -> Dict[str, Any]:
+        """Extracts structured leave application JSON from raw text using Groq LLM."""
+        system_prompt = (
+            "You are an AI extraction engine for school leave application forms.\n"
+            "Extract all relevant fields into a valid JSON object.\n"
+            "Return JSON matching these keys:\n"
+            "{\n"
+            '  "student_name": "Full Name",\n'
+            '  "class": "Class/Grade section e.g. 8A",\n'
+            '  "leave_from": "YYYY-MM-DD",\n'
+            '  "leave_to": "YYYY-MM-DD",\n'
+            '  "reason": "Reason for leave",\n'
+            '  "parent_name": "Parent or Guardian Name",\n'
+            '  "parent_phone": "Contact Phone Number",\n'
+            '  "approved": false\n'
+            "}\n"
+            "Output ONLY valid JSON. If a field is not present, use null."
+        )
+        return self._call_groq_json(system_prompt, f"Leave Application Text:\n{raw_text}")
+
 
 groq_client = GroqAIClient()
