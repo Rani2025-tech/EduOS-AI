@@ -8,12 +8,12 @@
 [![LLM Engine](https://img.shields.io/badge/Groq-Llama--3.3--70B-F55036.svg)](https://groq.com/)
 [![Solver](https://img.shields.io/badge/Google-OR--Tools%20CP--SAT-4285F4.svg)](https://developers.google.com/optimization)
 
-> 🚀 **Live Demo:** [https://eduos-ai-9ccfhasj4dkbznvatlpc7a.streamlit.app/](https://eduos-ai-9ccfhasj4dkbznvatlpc7a.streamlit.app/)  
+>  **Live Demo:** [https://eduos-ai-9ccfhasj4dkbznvatlpc7a.streamlit.app/](https://eduos-ai-9ccfhasj4dkbznvatlpc7a.streamlit.app/)  
 > **Demo Login:** Username: `dev_admin` | Password: `password123`
 
 ---
 
-## 🎬 Demo Video
+##  Demo Video
 
 [![EduOS AI — Demo Video](https://img.youtube.com/vi/CYIu5YFX_zM/maxresdefault.jpg)](https://www.youtube.com/watch?v=CYIu5YFX_zM)
 
@@ -77,25 +77,25 @@ flowchart TD
 
 ## 4. Key Implemented Features
 
-### 📄 1. AI Document Reader (Multi-Slot Intake)
+###  1. AI Document Reader (Multi-Slot Intake)
 - **Multi-Slot Inputs:** Accepts admission forms and fee receipts via picture upload, document file (PDF/CSV/TXT), or raw pasted text.
 - **Schema-Constrained LLM Extraction:** Extracts strict JSON using Groq AI (`llama-3.3-70b-versatile`).
 - **Validation & Audit Trail:** Validates all extracted fields through Pydantic models with automated JSON repair.
 - **Human-in-the-Loop Commit:** Provides an administrative review queue before committing student records to Supabase.
 
-### 👩‍🏫 2. Teacher Availability & Roster Parser
+###  2. Teacher Availability & Roster Parser
 - Digitizes unstructured teacher roster text and availability constraints.
 - Tracks faculty directory, assigned classes, and custom unavailability rules (e.g., leave days, unavailable periods).
 
-### 🗓️ 3. Smart Timetable Engine (Google OR-Tools CP-SAT)
+###  3. Smart Timetable Engine (Google OR-Tools CP-SAT)
 - Solves class scheduling with hard constraints (no double-booking of teachers, rooms, or class sections).
 - **One-Click Substitute Assignment:** When a teacher is toggled absent, the CP-SAT constraint solver reassigns available faculty without disrupting unaffected slots.
 
-### 📈 4. Predictive Insights & Analytics
+### 4. Predictive Insights & Analytics
 - Deterministic analysis computed directly over live school data.
 - Identifies students below the 75% attendance threshold, tracks fee overdue patterns, and projects risk levels.
 
-### 📊 5. Smart Staffing Risk Score & Recommendations
+###  5. Smart Staffing Risk Score & Recommendations
 - Calculates a 0–100 staffing pressure score across 4 weighted operational signals:
   - **Signal A (35%):** Teacher unavailability ratio.
   - **Signal B (30%):** Uncovered timetable slot ratio.
@@ -103,19 +103,19 @@ flowchart TD
   - **Signal D (15%):** Substitute dependency ratio.
 - Generates actionable workload and hiring recommendations for school administrators.
 
-### 🤖 6. Grounded AI Copilot (Natural-Language Query)
+###  6. Grounded AI Copilot (Natural-Language Query)
 - Natural-language query interface over live institutional data.
 - Numerical facts and metrics are retrieved directly from the Analytics and Staffing engines, preventing LLM hallucinations.
 - Features automatic intent classification and deterministic offline fallback.
 
-### 🚨 7. Proactive Alerts Center
+###  7. Proactive Alerts Center
 - Real-time rule-based monitoring for critical attendance drops, timetable clashes, unpaid fees, and staffing shortages.
 - Scopes alerts to relevant user roles.
 
-### 🗄️ 8. Unified Data Layer
+###  8. Unified Data Layer
 - Central source of truth joining Student ID $\leftrightarrow$ Attendance $\leftrightarrow$ Fee Ledger $\leftrightarrow$ Master Timetable.
 
-### 👥 9. Four Tailored User Personas
+###  9. Four Tailored User Personas
 - **Admin:** Complete institutional oversight, document intake, timetable solver, analytics, and copilot.
 - **Teacher:** Quick class attendance marking (present/absent) with instant Supabase updates and faculty timetable.
 - **Student:** Personal timetable view, academic GPA, attendance progress, and fee ledger status.
