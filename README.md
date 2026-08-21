@@ -294,7 +294,7 @@ python -m pytest
 
 ## 11. Project Status & Roadmap
 
-### ✅ Implemented Prototype Features
+###  Implemented Prototype Features
 - [x] Multi-slot document processing pipeline with Groq AI extraction.
 - [x] Human-in-the-loop document audit and review queue.
 - [x] Google OR-Tools CP-SAT constraint-based timetable scheduler and substitute solver.
@@ -305,7 +305,7 @@ python -m pytest
 - [x] Live attendance marking and simulated fee ledger updates in Supabase.
 - [x] Comprehensive test suite with 112+ unit tests.
 
-### 🔮 Future Roadmap (Post-Hackathon)
+###  Future Roadmap (Post-Hackathon)
 - [ ] Direct WhatsApp / SMS webhook notifications for parent alerts.
 - [ ] Mobile application built with React Native.
 - [ ] Multi-tenant school district support with partitioned organizational schemas.
