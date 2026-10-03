@@ -35,6 +35,7 @@ from typing import Any, Dict, List, Optional
 
 import bcrypt
 import jwt
+from dotenv import load_dotenv
 from env_config import get_missing_vars, sync_streamlit_secrets
 
 load_dotenv()
