@@ -60,6 +60,10 @@ if not _JWT_SECRET:
 
 def is_auth_configured() -> bool:
     """Returns True when JWT_SECRET_KEY is set (required for login)."""
+    global _JWT_SECRET
+    if not _JWT_SECRET:
+        load_dotenv(override=True)
+        _JWT_SECRET = os.getenv("JWT_SECRET_KEY", "").strip()
     return bool(_JWT_SECRET)
 
 

@@ -18,7 +18,7 @@ except ImportError:
 class GroqAIClient:
     def __init__(self):
         self.api_key = os.getenv("GROQ_API_KEY", "").strip()
-        self.model = "llama-3.3-70b-versatile"
+        self.model = os.getenv("GROQ_MODEL", "openai/gpt-oss-120b").strip()
         self.client = None
 
         if not self.api_key:
@@ -43,23 +43,37 @@ class GroqAIClient:
         if not self.is_available():
             raise RuntimeError("Groq API key is missing or client is unavailable.")
 
-        try:
-            logger.info(f"Sending prompt to Groq AI (Model: {self.model})")
-            response = self.client.chat.completions.create(
-                model=self.model,
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_text}
-                ],
-                response_format={"type": "json_object"},
-                temperature=0.1
-            )
-            raw_output = response.choices[0].message.content
-            logger.info("Groq AI response received successfully.")
-            return raw_output
-        except Exception as e:
-            logger.error(f"Groq API call error: {e}")
-            raise RuntimeError(f"Groq API Error: {str(e)}")
+        fallback_models = [self.model, "openai/gpt-oss-120b", "openai/gpt-oss-20b", "qwen/qwen3.8-27b", "llama-3.3-70b-versatile"]
+        seen_models = set()
+        last_error = None
+
+        for model_name in fallback_models:
+            if not model_name or model_name in seen_models:
+                continue
+            seen_models.add(model_name)
+            try:
+                logger.info(f"Sending prompt to Groq AI (Model: {model_name})")
+                response = self.client.chat.completions.create(
+                    model=model_name,
+                    messages=[
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_text}
+                    ],
+                    response_format={"type": "json_object"},
+                    temperature=0.1
+                )
+                raw_output = response.choices[0].message.content
+                logger.info("Groq AI response received successfully.")
+                self.model = model_name
+                return raw_output
+            except Exception as e:
+                last_error = e
+                logger.warning(f"Groq API call error with model {model_name}: {e}")
+                if "model_not_found" not in str(e) and "does not exist" not in str(e):
+                    break
+
+        logger.error(f"All Groq model attempts failed: {last_error}")
+        raise RuntimeError(f"Groq API Error: {str(last_error)}")
 
     def extract_student_form_from_text(self, raw_text: str, doc_type: str = "admission_form") -> Dict[str, Any]:
         """Extracts structured student/document JSON from raw OCR text using Groq LLM."""

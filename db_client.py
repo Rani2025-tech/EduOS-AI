@@ -71,6 +71,22 @@ class DatabaseClient:
             self.config_errors = ["Connection probe failed — check URL, key, and RLS policies."]
             return False
 
+    def _ensure_connected(self) -> bool:
+        """Attempts connection or re-reads .env if not currently active."""
+        if self.is_supabase_active and self.supabase is not None:
+            return True
+        load_dotenv(override=True)
+        self.supabase_url = os.getenv("SUPABASE_URL", "").strip()
+        self.supabase_key = (
+            os.getenv("SUPABASE_KEY", "") or os.getenv("SUPABASE_ANON_KEY", "")
+        ).strip()
+        missing = get_missing_vars(for_db=True)
+        if missing:
+            self.config_errors = missing
+            self.connection_status = DB_STATUS_MISSING_CONFIG
+            return False
+        return self._connect_supabase(self.supabase_url, self.supabase_key)
+
     def set_supabase_credentials(self, url: str, key: str) -> bool:
         return self._connect_supabase(url, key)
 
@@ -317,6 +333,7 @@ class DatabaseClient:
     # ----------------------------------------------------
     def get_user_by_username(self, username: str) -> Optional[Dict[str, Any]]:
         """Fetches a single user record by username. Returns None if not found."""
+        self._ensure_connected()
         if not self.is_supabase_active or not self.supabase:
             return None
         try:
@@ -335,6 +352,7 @@ class DatabaseClient:
 
     def get_user_by_id(self, user_id: str) -> Optional[Dict[str, Any]]:
         """Fetches a single user record by ID. Returns None if not found."""
+        self._ensure_connected()
         if not self.is_supabase_active or not self.supabase:
             return None
         try:

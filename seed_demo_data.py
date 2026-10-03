@@ -416,7 +416,7 @@ def seed_availability() -> None:
     print("\n[INFO] Seeding teacher availability...")
     for a in AVAILABILITY:
         db_instance.upsert_teacher_availability(a)
-        print(f"  [OK] {a['id']} — {a['teacher_name']} | {a['day_of_week']} P{a['period']} → {a['status']}")
+        print(f"  [OK] {a['id']} - {a['teacher_name']} | {a['day_of_week']} P{a['period']} -> {a['status']}")
 
 def seed_timetable() -> None:
     print("\n[INFO] Seeding timetable...")
