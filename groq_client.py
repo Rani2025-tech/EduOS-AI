@@ -2,8 +2,10 @@ import os
 import logging
 from typing import Dict, Any, List, Optional
 from dotenv import load_dotenv
+from env_config import sync_streamlit_secrets
 
 load_dotenv()
+sync_streamlit_secrets()
 
 logger = logging.getLogger("EduOS_GroqClient")
 logger.setLevel(logging.INFO)

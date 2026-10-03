@@ -16,6 +16,23 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
+def sync_streamlit_secrets() -> None:
+    """Populates os.environ with key-values from st.secrets if running on Streamlit Cloud."""
+    try:
+        import streamlit as st
+        if hasattr(st, "secrets"):
+            for k, v in st.secrets.items():
+                if isinstance(v, str):
+                    os.environ.setdefault(k, v)
+                elif isinstance(v, (int, float, bool)):
+                    os.environ.setdefault(k, str(v))
+    except Exception:
+        pass
+
+
+sync_streamlit_secrets()
+
+
 @dataclass(frozen=True)
 class EnvVarSpec:
     name: str

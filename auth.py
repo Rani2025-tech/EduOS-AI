@@ -35,11 +35,10 @@ from typing import Any, Dict, List, Optional
 
 import bcrypt
 import jwt
-from dotenv import load_dotenv
-
-from env_config import get_missing_vars
+from env_config import get_missing_vars, sync_streamlit_secrets
 
 load_dotenv()
+sync_streamlit_secrets()
 
 logger = logging.getLogger("EduOS_Auth")
 logger.setLevel(logging.INFO)
@@ -63,6 +62,7 @@ def is_auth_configured() -> bool:
     global _JWT_SECRET
     if not _JWT_SECRET:
         load_dotenv(override=True)
+        sync_streamlit_secrets()
         _JWT_SECRET = os.getenv("JWT_SECRET_KEY", "").strip()
     return bool(_JWT_SECRET)
 

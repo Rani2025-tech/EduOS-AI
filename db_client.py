@@ -4,9 +4,10 @@ from typing import List, Dict, Any, Optional
 from dotenv import load_dotenv
 from supabase import create_client, Client
 
-from env_config import get_missing_vars, validate_supabase_url
+from env_config import get_missing_vars, validate_supabase_url, sync_streamlit_secrets
 
 load_dotenv()
+sync_streamlit_secrets()
 
 logger = logging.getLogger("EduOS_DatabaseClient")
 logger.setLevel(logging.INFO)
@@ -76,6 +77,7 @@ class DatabaseClient:
         if self.is_supabase_active and self.supabase is not None:
             return True
         load_dotenv(override=True)
+        sync_streamlit_secrets()
         self.supabase_url = os.getenv("SUPABASE_URL", "").strip()
         self.supabase_key = (
             os.getenv("SUPABASE_KEY", "") or os.getenv("SUPABASE_ANON_KEY", "")
